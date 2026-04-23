@@ -1,0 +1,309 @@
+@startuml compliance-backend-diagram
+title QualiTrack – Compliance & Alerting Backend
+
+package "domain" {
+
+  abstract class AuditableEntity {
+    +createdAt: LocalDateTime
+    +updatedAt: LocalDateTime
+    +createdBy: String
+  }
+
+  class ComplianceEvent {
+    -id: ComplianceEventId
+    -measurementId: MeasurementId
+    -equipmentId: EquipmentId
+    -batchId: BatchId
+    -result: ComplianceResult
+    -evaluatedAt: LocalDateTime
+    +evaluate(measurement: MeasurementData, configs: List<BpmParameterConfig>): ComplianceEvent
+    +isDeviation(): boolean
+    +isCritical(): boolean
+  }
+
+  class DeviationAlert {
+    -id: AlertId
+    -complianceEventId: ComplianceEventId
+    -equipmentId: EquipmentId
+    -batchId: BatchId
+    -variable: CriticalVariable
+    -detectedValue: double
+    -minAllowed: double
+    -maxAllowed: double
+    -severity: DeviationSeverity
+    -status: AlertStatus
+    -triggeredAt: LocalDateTime
+    -resolvedAt: LocalDateTime
+    +trigger(event: ComplianceEvent, variable: CriticalVariable): DeviationAlert
+    +resolve(): void
+    +escalate(): void
+    +isCritical(): boolean
+    +isResolved(): boolean
+  }
+
+  class NotificationPreference {
+    -userId: UserId
+    -emailEnabled: boolean
+    -webPushEnabled: boolean
+    -smsEnabled: boolean
+    +update(email: boolean, push: boolean, sms: boolean): void
+    +isAnyChannelEnabled(): boolean
+  }
+
+  class BpmEvaluationService {
+    +evaluate(measurement: MeasurementData, configs: List<BpmParameterConfig>): ComplianceResult
+    +identifyDeviatingVariables(measurement: MeasurementData, configs: List<BpmParameterConfig>): List<VariableDeviation>
+    +classifySeverity(deviation: VariableDeviation): DeviationSeverity
+  }
+
+  class VariableDeviation {
+    -variable: CriticalVariable
+    -detectedValue: double
+    -minAllowed: double
+    -maxAllowed: double
+    -severity: DeviationSeverity
+    +getDeviationPercentage(): double
+  }
+
+  enum ComplianceResult {
+    CONFORM
+    WARNING
+    DEVIATION
+    CRITICAL_DEVIATION
+  }
+
+  enum DeviationSeverity {
+    WARNING
+    CRITICAL
+    CATASTROPHIC
+  }
+
+  enum AlertStatus {
+    ACTIVE
+    ACKNOWLEDGED
+    RESOLVED
+    ESCALATED
+  }
+
+  enum CriticalVariable {
+    TEMPERATURE
+    PRESSURE
+    PH
+    HUMIDITY
+    FLOW_RATE
+  }
+}
+
+package "domain.valueobjects" {
+
+  class ComplianceEventId {
+    -value: String
+    +of(value: String): ComplianceEventId
+    +toString(): String
+  }
+
+  class AlertId {
+    -value: String
+    +of(value: String): AlertId
+    +toString(): String
+  }
+
+  class MeasurementId {
+    -value: String
+    +of(value: String): MeasurementId
+    +toString(): String
+  }
+
+  class EquipmentId {
+    -value: String
+    +of(value: String): EquipmentId
+    +toString(): String
+  }
+
+  class BatchId {
+    -value: String
+    +of(value: String): BatchId
+    +toString(): String
+  }
+
+  class UserId {
+    -value: String
+    +of(value: String): UserId
+    +toString(): String
+  }
+}
+
+package "domain.events" {
+
+  abstract class DomainEvent {
+    +occurredOn: LocalDateTime
+    +eventId: String
+  }
+
+  class DeviationDetectedEvent {
+    +alertId: AlertId
+    +equipmentId: EquipmentId
+    +batchId: BatchId
+    +severity: String
+    +affectedVariables: List<String>
+    +detectedAt: LocalDateTime
+  }
+
+  class BatchBlockedByComplianceEvent {
+    +batchId: BatchId
+    +alertId: AlertId
+    +blockedAt: LocalDateTime
+    +reason: String
+  }
+
+  class AlertResolvedEvent {
+    +alertId: AlertId
+    +resolvedAt: LocalDateTime
+    +resolvedBy: UserId
+  }
+}
+
+package "domain.repositories" {
+
+  interface ComplianceEventRepository {
+    +findById(id: ComplianceEventId): Optional<ComplianceEvent>
+    +findByEquipmentId(equipmentId: EquipmentId): List<ComplianceEvent>
+    +findByBatchId(batchId: BatchId): List<ComplianceEvent>
+    +findDeviations(labId: String): List<ComplianceEvent>
+    +save(event: ComplianceEvent): ComplianceEvent
+  }
+
+  interface AlertRepository {
+    +findById(id: AlertId): Optional<DeviationAlert>
+    +findActiveByLabId(labId: String): List<DeviationAlert>
+    +findByEquipmentId(equipmentId: EquipmentId): List<DeviationAlert>
+    +findByBatchId(batchId: BatchId): List<DeviationAlert>
+    +countActiveByLabId(labId: String): int
+    +save(alert: DeviationAlert): DeviationAlert
+  }
+
+  interface NotificationPreferenceRepository {
+    +findByUserId(userId: UserId): Optional<NotificationPreference>
+    +save(preference: NotificationPreference): NotificationPreference
+  }
+}
+
+package "application" {
+
+  class EvaluateMeasurementCommandHandler {
+    -bpmEvaluationService: BpmEvaluationService
+    -complianceEventRepository: ComplianceEventRepository
+    -alertRepository: AlertRepository
+    -equipmentBpmConfigProvider: EquipmentBpmConfigProvider
+    -notificationService: AlertNotificationService
+    -eventPublisher: DomainEventPublisher
+    +handle(command: EvaluateMeasurementCommand): ComplianceEventId
+    -createAlertsForDeviations(event: ComplianceEvent, deviations: List<VariableDeviation>): void
+    -notifyPersonnel(alerts: List<DeviationAlert>): void
+    -publishBatchBlockedEvent(batchId: BatchId, alertId: AlertId): void
+  }
+
+  class UpdateNotificationPreferenceCommandHandler {
+    -notificationPreferenceRepository: NotificationPreferenceRepository
+    +handle(command: UpdateNotificationPreferenceCommand): void
+  }
+
+  class GetAlertsQueryHandler {
+    -alertRepository: AlertRepository
+    +handle(query: GetAlertsQuery): List<AlertResource>
+  }
+
+  class GetActiveAlertsCountQueryHandler {
+    -alertRepository: AlertRepository
+    +handle(query: GetActiveAlertsCountQuery): int
+  }
+
+  interface EquipmentBpmConfigProvider {
+    +getConfigsForEquipment(equipmentId: EquipmentId): List<BpmParameterConfig>
+  }
+
+  interface AlertNotificationService {
+    +notifyByEmail(alert: DeviationAlert, recipients: List<String>): void
+    +notifyByWebPush(alert: DeviationAlert, userId: UserId): void
+  }
+
+  interface DomainEventPublisher {
+    +publish(event: DomainEvent): void
+  }
+}
+
+package "interfaces" {
+
+  class ComplianceController {
+    -getAlertsHandler: GetAlertsQueryHandler
+    -getCountHandler: GetActiveAlertsCountQueryHandler
+    +getAlerts(labId: String, severity: String, status: String, from: String, to: String): ResponseEntity<List<AlertResource>>
+    +getAlertById(alertId: String): ResponseEntity<AlertResource>
+    +getActiveAlertsCount(labId: String): ResponseEntity<Integer>
+  }
+
+  class NotificationPreferenceController {
+    -updateHandler: UpdateNotificationPreferenceCommandHandler
+    +getPreferences(userId: String): ResponseEntity<NotificationPreferenceResource>
+    +updatePreferences(userId: String, request: UpdatePreferencesRequest): ResponseEntity<Void>
+  }
+
+  class MeasurementEvaluatedEventListener {
+    -evaluateHandler: EvaluateMeasurementCommandHandler
+    +onMeasurementRecorded(event: MeasurementRecordedEvent): void
+  }
+
+  class AlertResource {
+    +id: String
+    +equipmentId: String
+    +equipmentName: String
+    +batchId: String
+    +variable: String
+    +detectedValue: double
+    +minAllowed: double
+    +maxAllowed: double
+    +severity: String
+    +status: String
+    +triggeredAt: String
+  }
+}
+
+ComplianceEvent --|> AuditableEntity
+DeviationAlert --|> AuditableEntity
+
+DeviationDetectedEvent --|> DomainEvent
+BatchBlockedByComplianceEvent --|> DomainEvent
+AlertResolvedEvent --|> DomainEvent
+
+ComplianceEvent --> ComplianceEventId
+ComplianceEvent --> MeasurementId
+ComplianceEvent --> EquipmentId
+ComplianceEvent --> BatchId
+ComplianceEvent --> ComplianceResult
+DeviationAlert --> AlertId
+DeviationAlert --> ComplianceEventId
+DeviationAlert --> EquipmentId
+DeviationAlert --> BatchId
+DeviationAlert --> CriticalVariable
+DeviationAlert --> DeviationSeverity
+DeviationAlert --> AlertStatus
+VariableDeviation --> CriticalVariable
+VariableDeviation --> DeviationSeverity
+NotificationPreference --> UserId
+
+EvaluateMeasurementCommandHandler --> BpmEvaluationService
+EvaluateMeasurementCommandHandler --> ComplianceEventRepository
+EvaluateMeasurementCommandHandler --> AlertRepository
+EvaluateMeasurementCommandHandler --> EquipmentBpmConfigProvider
+EvaluateMeasurementCommandHandler --> AlertNotificationService
+EvaluateMeasurementCommandHandler --> DomainEventPublisher
+UpdateNotificationPreferenceCommandHandler --> NotificationPreferenceRepository
+GetAlertsQueryHandler --> AlertRepository
+GetActiveAlertsCountQueryHandler --> AlertRepository
+
+ComplianceController --> GetAlertsQueryHandler
+ComplianceController --> GetActiveAlertsCountQueryHandler
+NotificationPreferenceController --> UpdateNotificationPreferenceCommandHandler
+MeasurementEvaluatedEventListener --> EvaluateMeasurementCommandHandler
+
+@enduml
