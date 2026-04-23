@@ -1,0 +1,279 @@
+@startuml equipment-backend-diagram
+title QualiTrack – Equipment Management Backend
+
+package "domain" {
+
+  abstract class AuditableEntity {
+    +createdAt: LocalDateTime
+    +updatedAt: LocalDateTime
+    +createdBy: String
+  }
+
+  class Equipment {
+    -id: EquipmentId
+    -labId: LabId
+    -name: String
+    -type: EquipmentType
+    -deviceId: DeviceId
+    -status: EquipmentStatus
+    -lastCalibrationDate: LocalDate
+    -nextCalibrationDate: LocalDate
+    -bpmConfig: List<BpmParameterConfig>
+    +register(labId: LabId, name: String, type: EquipmentType, deviceId: DeviceId): Equipment
+    +linkSensor(deviceId: DeviceId): void
+    +configureBpmParameters(configs: List<BpmParameterConfig>): void
+    +updateCalibration(calibrationDate: LocalDate, nextDate: LocalDate): void
+    +isCalibrationExpired(): boolean
+    +isCalibrationDueSoon(daysThreshold: int): boolean
+    +disable(): void
+    +enable(): void
+  }
+
+  class BpmParameterConfig {
+    -equipmentId: EquipmentId
+    -variable: CriticalVariable
+    -minValue: double
+    -maxValue: double
+    -unit: String
+    +isWithinRange(value: double): boolean
+    +getDeviationSeverity(value: double): DeviationSeverity
+  }
+
+  class MaintenanceRecord {
+    -id: MaintenanceId
+    -equipmentId: EquipmentId
+    -maintenanceType: MaintenanceType
+    -date: LocalDate
+    -technician: String
+    -observations: String
+    +register(equipmentId: EquipmentId, type: MaintenanceType, date: LocalDate): MaintenanceRecord
+  }
+
+  enum EquipmentType {
+    AUTOCLAVE
+    PH_METER
+    THERMOMETER
+    PRESSURE_SENSOR
+    CENTRIFUGE
+    SPECTROPHOTOMETER
+  }
+
+  enum EquipmentStatus {
+    ACTIVE
+    INACTIVE
+    UNDER_MAINTENANCE
+    PENDING_CALIBRATION
+  }
+
+  enum CriticalVariable {
+    TEMPERATURE
+    PRESSURE
+    PH
+    HUMIDITY
+    FLOW_RATE
+  }
+
+  enum DeviationSeverity {
+    WARNING
+    CRITICAL
+    CATASTROPHIC
+  }
+
+  enum MaintenanceType {
+    PREVENTIVE
+    CORRECTIVE
+    CALIBRATION
+  }
+}
+
+package "domain.valueobjects" {
+
+  class EquipmentId {
+    -value: String
+    +of(value: String): EquipmentId
+    +toString(): String
+  }
+
+  class DeviceId {
+    -value: String
+    +of(value: String): DeviceId
+    +toString(): String
+    +isValid(): boolean
+  }
+
+  class MaintenanceId {
+    -value: String
+    +of(value: String): MaintenanceId
+    +toString(): String
+  }
+
+  class LabId {
+    -value: String
+    +of(value: String): LabId
+    +toString(): String
+  }
+}
+
+package "domain.events" {
+
+  abstract class DomainEvent {
+    +occurredOn: LocalDateTime
+    +eventId: String
+  }
+
+  class EquipmentRegisteredEvent {
+    +equipmentId: EquipmentId
+    +labId: LabId
+    +deviceId: DeviceId
+    +type: String
+  }
+
+  class SensorLinkedEvent {
+    +equipmentId: EquipmentId
+    +deviceId: DeviceId
+    +linkedAt: LocalDateTime
+  }
+
+  class BpmConfiguredEvent {
+    +equipmentId: EquipmentId
+    +variablesConfigured: List<String>
+    +configuredAt: LocalDateTime
+  }
+
+  class CalibrationExpiredEvent {
+    +equipmentId: EquipmentId
+    +labId: LabId
+    +expiredAt: LocalDate
+  }
+
+  class MaintenanceRegisteredEvent {
+    +maintenanceId: MaintenanceId
+    +equipmentId: EquipmentId
+    +type: String
+    +date: LocalDate
+  }
+}
+
+package "domain.repositories" {
+
+  interface EquipmentRepository {
+    +findById(id: EquipmentId): Optional<Equipment>
+    +findByLabId(labId: LabId): List<Equipment>
+    +findByDeviceId(deviceId: DeviceId): Optional<Equipment>
+    +findWithExpiredCalibration(labId: LabId): List<Equipment>
+    +findCalibrationDueSoon(labId: LabId, daysThreshold: int): List<Equipment>
+    +save(equipment: Equipment): Equipment
+    +existsByDeviceId(deviceId: DeviceId): boolean
+  }
+
+  interface MaintenanceRepository {
+    +findByEquipmentId(equipmentId: EquipmentId): List<MaintenanceRecord>
+    +save(record: MaintenanceRecord): MaintenanceRecord
+  }
+}
+
+package "application" {
+
+  class RegisterEquipmentCommandHandler {
+    -equipmentRepository: EquipmentRepository
+    +handle(command: RegisterEquipmentCommand): EquipmentId
+  }
+
+  class LinkSensorCommandHandler {
+    -equipmentRepository: EquipmentRepository
+    +handle(command: LinkSensorCommand): void
+  }
+
+  class ConfigureBpmParametersCommandHandler {
+    -equipmentRepository: EquipmentRepository
+    +handle(command: ConfigureBpmParametersCommand): void
+  }
+
+  class RegisterMaintenanceCommandHandler {
+    -equipmentRepository: EquipmentRepository
+    -maintenanceRepository: MaintenanceRepository
+    +handle(command: RegisterMaintenanceCommand): MaintenanceId
+  }
+
+  class GetEquipmentQueryHandler {
+    -equipmentRepository: EquipmentRepository
+    +handle(query: GetEquipmentQuery): List<EquipmentResource>
+  }
+
+  class GetCalibrationAlertsQueryHandler {
+    -equipmentRepository: EquipmentRepository
+    +handle(query: GetCalibrationAlertsQuery): List<CalibrationAlertResource>
+  }
+
+  class GetMaintenanceHistoryQueryHandler {
+    -maintenanceRepository: MaintenanceRepository
+    +handle(query: GetMaintenanceHistoryQuery): List<MaintenanceResource>
+  }
+}
+
+package "interfaces" {
+
+  class EquipmentController {
+    -getEquipmentHandler: GetEquipmentQueryHandler
+    -registerEquipmentHandler: RegisterEquipmentCommandHandler
+    -linkSensorHandler: LinkSensorCommandHandler
+    -configureHandler: ConfigureBpmParametersCommandHandler
+    +getEquipment(labId: String): ResponseEntity<List<EquipmentResource>>
+    +registerEquipment(labId: String, request: RegisterEquipmentRequest): ResponseEntity<EquipmentResource>
+    +linkSensor(labId: String, equipmentId: String, request: LinkSensorRequest): ResponseEntity<Void>
+    +configureBpm(labId: String, equipmentId: String, request: BpmConfigRequest): ResponseEntity<Void>
+  }
+
+  class MaintenanceController {
+    -getMaintenanceHandler: GetMaintenanceHistoryQueryHandler
+    -registerMaintenanceHandler: RegisterMaintenanceCommandHandler
+    +getMaintenanceHistory(equipmentId: String): ResponseEntity<List<MaintenanceResource>>
+    +registerMaintenance(equipmentId: String, request: RegisterMaintenanceRequest): ResponseEntity<MaintenanceResource>
+  }
+
+  class CalibrationController {
+    -getCalibrationAlertsHandler: GetCalibrationAlertsQueryHandler
+    +getCalibrationAlerts(labId: String): ResponseEntity<List<CalibrationAlertResource>>
+  }
+}
+
+Equipment --|> AuditableEntity
+MaintenanceRecord --|> AuditableEntity
+
+EquipmentRegisteredEvent --|> DomainEvent
+SensorLinkedEvent --|> DomainEvent
+BpmConfiguredEvent --|> DomainEvent
+CalibrationExpiredEvent --|> DomainEvent
+MaintenanceRegisteredEvent --|> DomainEvent
+
+Equipment --> EquipmentId
+Equipment --> LabId
+Equipment --> DeviceId
+Equipment --> EquipmentType
+Equipment --> EquipmentStatus
+Equipment --> BpmParameterConfig
+BpmParameterConfig --> EquipmentId
+BpmParameterConfig --> CriticalVariable
+BpmParameterConfig --> DeviationSeverity
+MaintenanceRecord --> MaintenanceId
+MaintenanceRecord --> EquipmentId
+MaintenanceRecord --> MaintenanceType
+
+RegisterEquipmentCommandHandler --> EquipmentRepository
+LinkSensorCommandHandler --> EquipmentRepository
+ConfigureBpmParametersCommandHandler --> EquipmentRepository
+RegisterMaintenanceCommandHandler --> EquipmentRepository
+RegisterMaintenanceCommandHandler --> MaintenanceRepository
+GetEquipmentQueryHandler --> EquipmentRepository
+GetCalibrationAlertsQueryHandler --> EquipmentRepository
+GetMaintenanceHistoryQueryHandler --> MaintenanceRepository
+
+EquipmentController --> GetEquipmentQueryHandler
+EquipmentController --> RegisterEquipmentCommandHandler
+EquipmentController --> LinkSensorCommandHandler
+EquipmentController --> ConfigureBpmParametersCommandHandler
+MaintenanceController --> GetMaintenanceHistoryQueryHandler
+MaintenanceController --> RegisterMaintenanceCommandHandler
+CalibrationController --> GetCalibrationAlertsQueryHandler
+
+@enduml
