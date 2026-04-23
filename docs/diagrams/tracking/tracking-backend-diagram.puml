@@ -1,0 +1,275 @@
+@startuml tracking-backend-diagram
+title QualiTrack – Tracking Backend
+
+package "domain" {
+
+  abstract class AuditableEntity {
+    +createdAt: LocalDateTime
+    +updatedAt: LocalDateTime
+    +createdBy: String
+  }
+
+  class Measurement {
+    -id: MeasurementId
+    -deviceId: DeviceId
+    -equipmentId: EquipmentId
+    -batchId: BatchId
+    -temperature: double
+    -pressure: double
+    -ph: double
+    -timestamp: LocalDateTime
+    -complianceResult: ComplianceResult
+    +record(deviceId: DeviceId, equipmentId: EquipmentId, batchId: BatchId): Measurement
+    +setComplianceResult(result: ComplianceResult): void
+    +isDeviation(): boolean
+    +getTimestamp(): LocalDateTime
+  }
+
+  class DeviceBinding {
+    -id: BindingId
+    -deviceId: DeviceId
+    -equipmentId: EquipmentId
+    -labId: LabId
+    -active: boolean
+    -boundAt: LocalDateTime
+    +bind(deviceId: DeviceId, equipmentId: EquipmentId, labId: LabId): DeviceBinding
+    +unbind(): void
+    +isActive(): boolean
+  }
+
+  class TelemetryRecord {
+    -equipmentId: EquipmentId
+    -variable: CriticalVariable
+    -value: double
+    -unit: String
+    -recordedAt: LocalDateTime
+    +of(equipmentId: EquipmentId, variable: CriticalVariable, value: double): TelemetryRecord
+  }
+
+  enum ComplianceResult {
+    PENDING
+    CONFORM
+    DEVIATION
+    CRITICAL_DEVIATION
+  }
+
+  enum CriticalVariable {
+    TEMPERATURE
+    PRESSURE
+    PH
+    HUMIDITY
+    FLOW_RATE
+  }
+}
+
+package "domain.valueobjects" {
+
+  class MeasurementId {
+    -value: String
+    +of(value: String): MeasurementId
+    +toString(): String
+  }
+
+  class DeviceId {
+    -value: String
+    +of(value: String): DeviceId
+    +isValid(): boolean
+    +toString(): String
+  }
+
+  class EquipmentId {
+    -value: String
+    +of(value: String): EquipmentId
+    +toString(): String
+  }
+
+  class BatchId {
+    -value: String
+    +of(value: String): BatchId
+    +toString(): String
+  }
+
+  class BindingId {
+    -value: String
+    +of(value: String): BindingId
+    +toString(): String
+  }
+
+  class LabId {
+    -value: String
+    +of(value: String): LabId
+    +toString(): String
+  }
+
+  class DateRange {
+    -from: LocalDateTime
+    -to: LocalDateTime
+    +of(from: LocalDateTime, to: LocalDateTime): DateRange
+    +contains(timestamp: LocalDateTime): boolean
+    +isValid(): boolean
+  }
+}
+
+package "domain.events" {
+
+  abstract class DomainEvent {
+    +occurredOn: LocalDateTime
+    +eventId: String
+  }
+
+  class MeasurementRecordedEvent {
+    +measurementId: MeasurementId
+    +deviceId: DeviceId
+    +equipmentId: EquipmentId
+    +batchId: BatchId
+    +temperature: double
+    +pressure: double
+    +ph: double
+    +recordedAt: LocalDateTime
+  }
+
+  class DeviceBoundEvent {
+    +deviceId: DeviceId
+    +equipmentId: EquipmentId
+    +labId: LabId
+    +boundAt: LocalDateTime
+  }
+
+  class UnknownDeviceAttemptEvent {
+    +deviceId: String
+    +attemptedAt: LocalDateTime
+    +sourceIp: String
+  }
+}
+
+package "domain.repositories" {
+
+  interface MeasurementRepository {
+    +findById(id: MeasurementId): Optional<Measurement>
+    +findByEquipmentId(equipmentId: EquipmentId, range: DateRange): List<Measurement>
+    +findLatestByEquipmentId(equipmentId: EquipmentId): Optional<Measurement>
+    +findByBatchId(batchId: BatchId): List<Measurement>
+    +save(measurement: Measurement): Measurement
+  }
+
+  interface DeviceBindingRepository {
+    +findByDeviceId(deviceId: DeviceId): Optional<DeviceBinding>
+    +findByEquipmentId(equipmentId: EquipmentId): Optional<DeviceBinding>
+    +findByLabId(labId: LabId): List<DeviceBinding>
+    +save(binding: DeviceBinding): DeviceBinding
+    +existsByDeviceId(deviceId: DeviceId): boolean
+  }
+}
+
+package "application" {
+
+  class IngestTelemetryCommandHandler {
+    -measurementRepository: MeasurementRepository
+    -deviceBindingRepository: DeviceBindingRepository
+    -eventPublisher: DomainEventPublisher
+    +handle(command: IngestTelemetryCommand): MeasurementId
+    -validateDeviceBinding(deviceId: DeviceId): DeviceBinding
+    -buildMeasurement(command: IngestTelemetryCommand, binding: DeviceBinding): Measurement
+  }
+
+  class BindDeviceCommandHandler {
+    -deviceBindingRepository: DeviceBindingRepository
+    -eventPublisher: DomainEventPublisher
+    +handle(command: BindDeviceCommand): BindingId
+  }
+
+  class GetTelemetryHistoryQueryHandler {
+    -measurementRepository: MeasurementRepository
+    +handle(query: GetTelemetryHistoryQuery): List<MeasurementResource>
+  }
+
+  class GetLatestMeasurementQueryHandler {
+    -measurementRepository: MeasurementRepository
+    +handle(query: GetLatestMeasurementQuery): MeasurementResource
+  }
+
+  class GetEquipmentStatusQueryHandler {
+    -measurementRepository: MeasurementRepository
+    -deviceBindingRepository: DeviceBindingRepository
+    +handle(query: GetEquipmentStatusQuery): List<EquipmentStatusResource>
+  }
+
+  interface DomainEventPublisher {
+    +publish(event: DomainEvent): void
+  }
+}
+
+package "interfaces" {
+
+  class TelemetryController {
+    -ingestHandler: IngestTelemetryCommandHandler
+    -getHistoryHandler: GetTelemetryHistoryQueryHandler
+    -getLatestHandler: GetLatestMeasurementQueryHandler
+    -getStatusHandler: GetEquipmentStatusQueryHandler
+    +ingestTelemetry(request: IngestTelemetryRequest): ResponseEntity<Void>
+    +getTelemetryHistory(equipmentId: String, from: String, to: String): ResponseEntity<List<MeasurementResource>>
+    +getLatestMeasurement(equipmentId: String): ResponseEntity<MeasurementResource>
+    +getEquipmentStatuses(labId: String): ResponseEntity<List<EquipmentStatusResource>>
+  }
+
+  class DeviceBindingController {
+    -bindDeviceHandler: BindDeviceCommandHandler
+    +bindDevice(equipmentId: String, request: BindDeviceRequest): ResponseEntity<BindingResource>
+  }
+
+  class MeasurementResource {
+    +id: String
+    +equipmentId: String
+    +batchId: String
+    +temperature: double
+    +pressure: double
+    +ph: double
+    +complianceResult: String
+    +timestamp: String
+  }
+
+  class EquipmentStatusResource {
+    +equipmentId: String
+    +equipmentName: String
+    +isConnected: boolean
+    +lastMeasurement: MeasurementResource
+    +lastSeenAt: String
+  }
+}
+
+Measurement --|> AuditableEntity
+DeviceBinding --|> AuditableEntity
+
+MeasurementRecordedEvent --|> DomainEvent
+DeviceBoundEvent --|> DomainEvent
+UnknownDeviceAttemptEvent --|> DomainEvent
+
+Measurement --> MeasurementId
+Measurement --> DeviceId
+Measurement --> EquipmentId
+Measurement --> BatchId
+Measurement --> ComplianceResult
+DeviceBinding --> BindingId
+DeviceBinding --> DeviceId
+DeviceBinding --> EquipmentId
+DeviceBinding --> LabId
+TelemetryRecord --> EquipmentId
+TelemetryRecord --> CriticalVariable
+
+IngestTelemetryCommandHandler --> MeasurementRepository
+IngestTelemetryCommandHandler --> DeviceBindingRepository
+IngestTelemetryCommandHandler --> DomainEventPublisher
+BindDeviceCommandHandler --> DeviceBindingRepository
+BindDeviceCommandHandler --> DomainEventPublisher
+GetTelemetryHistoryQueryHandler --> MeasurementRepository
+GetLatestMeasurementQueryHandler --> MeasurementRepository
+GetEquipmentStatusQueryHandler --> MeasurementRepository
+GetEquipmentStatusQueryHandler --> DeviceBindingRepository
+
+TelemetryController --> IngestTelemetryCommandHandler
+TelemetryController --> GetTelemetryHistoryQueryHandler
+TelemetryController --> GetLatestMeasurementQueryHandler
+TelemetryController --> GetEquipmentStatusQueryHandler
+DeviceBindingController --> BindDeviceCommandHandler
+
+@enduml
