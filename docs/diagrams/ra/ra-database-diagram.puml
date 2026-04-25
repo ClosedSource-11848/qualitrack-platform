@@ -1,0 +1,99 @@
+@startuml reporting-database-diagram
+title QualiTrack – Reporting & Audit Database
+
+hide methods
+hide stereotypes
+
+entity "audit_reports" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  lab_id : VARCHAR(36) FK NOT NULL
+  batch_id : VARCHAR(36) FK
+  equipment_id : VARCHAR(36) FK
+  generated_by : VARCHAR(36) FK NOT NULL
+  generated_by_name : VARCHAR(150) NOT NULL
+  report_type : ENUM('BATCH_TRACEABILITY',
+    'COMPLIANCE_PERIOD',
+    'EQUIPMENT_LOG',
+    'KPI_SUMMARY') NOT NULL
+  date_range_from : DATETIME
+  date_range_to : DATETIME
+  file_path : VARCHAR(500) NOT NULL
+  checksum : VARCHAR(255) NOT NULL
+  generated_at : DATETIME NOT NULL
+}
+
+entity "kpi_snapshots" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  lab_id : VARCHAR(36) FK NOT NULL
+  metric_name : VARCHAR(100) NOT NULL
+  metric_value : DECIMAL(10,4) NOT NULL
+  unit : VARCHAR(20)
+  trend : ENUM('IMPROVING','STABLE',
+    'WORSENING')
+  compared_to_previous : DECIMAL(10,4)
+  calculated_at : DATETIME NOT NULL
+  period_from : DATETIME NOT NULL
+  period_to : DATETIME NOT NULL
+}
+
+entity "deviation_trend_records" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  lab_id : VARCHAR(36) FK NOT NULL
+  equipment_id : VARCHAR(36) FK NOT NULL
+  equipment_name : VARCHAR(150) NOT NULL
+  variable : VARCHAR(50) NOT NULL
+  period : VARCHAR(20) NOT NULL
+  deviation_count : INT NOT NULL DEFAULT 0
+  calculated_at : DATETIME NOT NULL
+}
+
+entity "audit_log_entries" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  lab_id : VARCHAR(36) FK NOT NULL
+  user_id : VARCHAR(36) FK NOT NULL
+  user_name : VARCHAR(150) NOT NULL
+  action : VARCHAR(100) NOT NULL
+  entity : VARCHAR(100) NOT NULL
+  entity_id : VARCHAR(36)
+  details : TEXT
+  source_ip : VARCHAR(45)
+  occurred_at : DATETIME NOT NULL
+}
+
+audit_reports }o--|| audit_log_entries : "registrado en"
+kpi_snapshots }o--o{ deviation_trend_records : "analiza"
+
+note right of audit_reports
+  Inmutable: no se permite
+  UPDATE ni DELETE.
+  El checksum garantiza
+  la integridad del archivo.
+  Índices:
+  - IDX_reports_lab_id (lab_id)
+  - IDX_reports_batch_id (batch_id)
+  - IDX_reports_type (report_type)
+  - IDX_reports_generated_at (generated_at)
+end note
+
+note right of audit_log_entries
+  Inmutable: no se permite
+  UPDATE ni DELETE.
+  Índices:
+  - IDX_audit_lab_id (lab_id)
+  - IDX_audit_user_id (user_id)
+  - IDX_audit_entity (entity, entity_id)
+  - IDX_audit_occurred_at (occurred_at)
+end note
+
+note right of kpi_snapshots
+  Índices:
+  - IDX_kpi_lab_id (lab_id)
+  - IDX_kpi_metric_name (metric_name)
+  - IDX_kpi_calculated_at (calculated_at)
+end note
+
+@enduml
