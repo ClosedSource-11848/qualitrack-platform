@@ -1,9 +1,10 @@
 @startuml qualitrack-database-diagram
-title QualiTrack – Complete Database Diagram
+title QualiTrack – Complete Database Diagram by Bounded Contexts
 
 hide methods
 hide stereotypes
 hide circle
+skinparam linetype ortho
 
 skinparam class {
   BackgroundColor #FEFEFE
@@ -14,394 +15,422 @@ skinparam class {
   FontSize 11
 }
 
-' ─── IAM ─────────────────────────────────────────────────────────────────────
+' ===================== IAM =====================
+package "IAM Context" {
 
-entity "users" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  lab_id : VARCHAR(36)
-  full_name : VARCHAR(150) NOT NULL
-  email : VARCHAR(150) NOT NULL UNIQUE
-  password_hash : VARCHAR(255) NOT NULL
-  role : ENUM('QA_MANAGER','LAB_OPERATOR','AUDITOR') NOT NULL
-  active : BOOLEAN DEFAULT TRUE
-  created_at : DATETIME NOT NULL
-  updated_at : DATETIME
-  created_by : VARCHAR(36)
+  entity "users" as users {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    full_name : VARCHAR(150)
+    email : VARCHAR(150)
+    password_hash : VARCHAR(255)
+    role : ENUM(...)
+    active : BOOLEAN
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "roles" as roles {
+    * id : VARCHAR(36)
+    --
+    name : VARCHAR(50)
+  }
+
+  entity "permissions" as permissions {
+    * id : VARCHAR(36)
+    --
+    resource : VARCHAR(100)
+    action : VARCHAR(50)
+  }
+
+  entity "role_permissions" as role_permissions {
+    * role_id : VARCHAR(36)
+    * permission_id : VARCHAR(36)
+  }
+
+  entity "user_role_assignments" as user_role_assignments {
+    * id : VARCHAR(36)
+    --
+    user_id : VARCHAR(36)
+    role_id : VARCHAR(36)
+    assigned_at : DATETIME
+    assigned_by : VARCHAR(36)
+  }
+
+  entity "password_recovery_tokens" as password_recovery_tokens {
+    * id : VARCHAR(36)
+    --
+    user_id : VARCHAR(36)
+    token_hash : VARCHAR(255)
+    expires_at : DATETIME
+    used : BOOLEAN
+    created_at : DATETIME
+  }
 }
 
-entity "roles" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  name : VARCHAR(50) NOT NULL UNIQUE
+' ===================== LABORATORY =====================
+package "Laboratory Context" {
+
+  entity "laboratories" as laboratories {
+    * id : VARCHAR(36)
+    --
+    name : VARCHAR(150)
+    ruc : VARCHAR(20)
+    address : VARCHAR(255)
+    phone : VARCHAR(20)
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "laboratory_regulations" as laboratory_regulations {
+    * lab_id : VARCHAR(36)
+    * regulation : ENUM(...)
+  }
+
+  entity "staff_members" as staff_members {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    full_name : VARCHAR(150)
+    role : VARCHAR(50)
+    email : VARCHAR(150)
+    active : BOOLEAN
+    deactivated_at : DATETIME
+    deactivated_by : VARCHAR(36)
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "pharmaceutical_products" as pharmaceutical_products {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    code : VARCHAR(50)
+    name : VARCHAR(150)
+    description : TEXT
+    specifications : TEXT
+    active : BOOLEAN
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "raw_materials" as raw_materials {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    name : VARCHAR(150)
+    code : VARCHAR(50)
+    supplier : VARCHAR(150)
+    batch_number : VARCHAR(50)
+    expiration_date : DATE
+    quantity_in_stock : DECIMAL(10,3)
+    unit : VARCHAR(20)
+    minimum_stock : DECIMAL(10,3)
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
 }
 
-entity "permissions" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  resource : VARCHAR(100) NOT NULL
-  action : VARCHAR(50) NOT NULL
+' ===================== EQUIPMENT =====================
+package "Equipment Context" {
+
+  entity "equipment" as equipment {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    name : VARCHAR(150)
+    type : ENUM(...)
+    device_id : VARCHAR(100)
+    status : ENUM(...)
+    last_calibration_date : DATE
+    next_calibration_date : DATE
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "bpm_parameter_configs" as bpm_parameter_configs {
+    * id : VARCHAR(36)
+    --
+    equipment_id : VARCHAR(36)
+    variable : ENUM(...)
+    min_value : DECIMAL(10,4)
+    max_value : DECIMAL(10,4)
+    unit : VARCHAR(20)
+    created_at : DATETIME
+    updated_at : DATETIME
+    updated_by : VARCHAR(36)
+  }
+
+  entity "maintenance_records" as maintenance_records {
+    * id : VARCHAR(36)
+    --
+    equipment_id : VARCHAR(36)
+    maintenance_type : ENUM(...)
+    date : DATE
+    technician : VARCHAR(150)
+    observations : TEXT
+    created_at : DATETIME
+    created_by : VARCHAR(36)
+  }
 }
 
-entity "role_permissions" {
-  * <u>role_id</u> : VARCHAR(36)
-  * <u>permission_id</u> : VARCHAR(36)
+' ===================== TRACKING (IoT) =====================
+package "Tracking Context" {
+
+  entity "device_bindings" as device_bindings {
+    * id : VARCHAR(36)
+    --
+    equipment_id : VARCHAR(36)
+    lab_id : VARCHAR(36)
+    device_id : VARCHAR(100)
+    active : BOOLEAN
+    bound_at : DATETIME
+    unbound_at : DATETIME
+    bound_by : VARCHAR(36)
+  }
+
+  entity "measurements" as measurements {
+    * id : VARCHAR(36)
+    --
+    equipment_id : VARCHAR(36)
+    batch_id : VARCHAR(36)
+    device_id : VARCHAR(100)
+    temperature : DECIMAL(6,2)
+    pressure : DECIMAL(6,2)
+    ph : DECIMAL(4,2)
+    compliance_result : ENUM(...)
+    recorded_at : DATETIME
+  }
+
+  entity "telemetry_records" as telemetry_records {
+    * id : VARCHAR(36)
+    --
+    equipment_id : VARCHAR(36)
+    measurement_id : VARCHAR(36)
+    variable : ENUM(...)
+    value : DECIMAL(10,4)
+    unit : VARCHAR(20)
+    recorded_at : DATETIME
+  }
 }
 
-entity "user_role_assignments" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  user_id : VARCHAR(36) NOT NULL
-  role_id : VARCHAR(36) NOT NULL
-  assigned_at : DATETIME NOT NULL
-  assigned_by : VARCHAR(36)
+' ===================== COMPLIANCE & ALERTING =====================
+package "Compliance Context" {
+
+  entity "compliance_events" as compliance_events {
+    * id : VARCHAR(36)
+    --
+    measurement_id : VARCHAR(36)
+    equipment_id : VARCHAR(36)
+    batch_id : VARCHAR(36)
+    result : ENUM(...)
+    evaluated_at : DATETIME
+  }
+
+  entity "deviation_alerts" as deviation_alerts {
+    * id : VARCHAR(36)
+    --
+    compliance_event_id : VARCHAR(36)
+    equipment_id : VARCHAR(36)
+    batch_id : VARCHAR(36)
+    variable : ENUM(...)
+    detected_value : DECIMAL(10,4)
+    min_allowed : DECIMAL(10,4)
+    max_allowed : DECIMAL(10,4)
+    severity : ENUM(...)
+    status : ENUM(...)
+    triggered_at : DATETIME
+    resolved_at : DATETIME
+    resolved_by : VARCHAR(36)
+    resolution_notes : TEXT
+    created_at : DATETIME
+  }
+
+  entity "notification_preferences" as notification_preferences {
+    * user_id : VARCHAR(36)
+    --
+    email_enabled : BOOLEAN
+    web_push_enabled : BOOLEAN
+    sms_enabled : BOOLEAN
+    updated_at : DATETIME
+  }
+
+  entity "alert_notification_logs" as alert_notification_logs {
+    * id : VARCHAR(36)
+    --
+    alert_id : VARCHAR(36)
+    user_id : VARCHAR(36)
+    channel : ENUM(...)
+    sent_at : DATETIME
+    delivered : BOOLEAN
+    error_message : VARCHAR(500)
+  }
 }
 
-entity "password_recovery_tokens" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  user_id : VARCHAR(36) NOT NULL
-  token_hash : VARCHAR(255) NOT NULL
-  expires_at : DATETIME NOT NULL
-  used : BOOLEAN DEFAULT FALSE
-  created_at : DATETIME NOT NULL
+' ===================== BATCH MANAGEMENT =====================
+package "Batch Context" {
+
+  entity "batches" as batches {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    product_id : VARCHAR(36)
+    equipment_id : VARCHAR(36)
+    batch_code : VARCHAR(50)
+    status : ENUM(...)
+    start_date : DATE
+    end_date : DATE
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "batch_raw_material_usages" as batch_raw_material_usages {
+    * id : VARCHAR(36)
+    --
+    batch_id : VARCHAR(36)
+    material_id : VARCHAR(36)
+    material_name : VARCHAR(150)
+    supplier : VARCHAR(150)
+    batch_number : VARCHAR(50)
+    quantity_used : DECIMAL(10,3)
+    unit : VARCHAR(20)
+    registered_at : DATETIME
+    registered_by : VARCHAR(36)
+  }
+
+  entity "digital_signatures" as digital_signatures {
+    * id : VARCHAR(36)
+    --
+    batch_id : VARCHAR(36)
+    qa_manager_id : VARCHAR(36)
+    qa_manager_name : VARCHAR(150)
+    observations : TEXT
+    signed_at : DATETIME
+  }
+
+  entity "rejection_records" as rejection_records {
+    * id : VARCHAR(36)
+    --
+    batch_id : VARCHAR(36)
+    rejected_by : VARCHAR(36)
+    rejected_by_name : VARCHAR(150)
+    root_cause : TEXT
+    corrective_action : TEXT
+    rejected_at : DATETIME
+  }
+
+  entity "batch_status_history" as batch_status_history {
+    * id : VARCHAR(36)
+    --
+    batch_id : VARCHAR(36)
+    previous_status : VARCHAR(50)
+    new_status : VARCHAR(50)
+    changed_at : DATETIME
+    changed_by : VARCHAR(36)
+    reason : TEXT
+  }
 }
 
-' ─── LABORATORY MANAGEMENT ───────────────────────────────────────────────────
+' ===================== REPORTING & AUDIT =====================
+package "Reporting Context" {
 
-entity "laboratories" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  name : VARCHAR(150) NOT NULL
-  ruc : VARCHAR(20) NOT NULL UNIQUE
-  address : VARCHAR(255)
-  phone : VARCHAR(20)
-  created_at : DATETIME NOT NULL
-  updated_at : DATETIME
-  created_by : VARCHAR(36)
+  entity "audit_reports" as audit_reports {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    batch_id : VARCHAR(36)
+    equipment_id : VARCHAR(36)
+    generated_by : VARCHAR(36)
+    generated_by_name : VARCHAR(150)
+    report_type : ENUM(...)
+    date_range_from : DATETIME
+    date_range_to : DATETIME
+    file_path : VARCHAR(500)
+    checksum : VARCHAR(255)
+    generated_at : DATETIME
+  }
+
+  entity "kpi_snapshots" as kpi_snapshots {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    metric_name : VARCHAR(100)
+    metric_value : DECIMAL(10,4)
+    unit : VARCHAR(20)
+    trend : ENUM(...)
+    compared_to_previous : DECIMAL(10,4)
+    calculated_at : DATETIME
+    period_from : DATETIME
+    period_to : DATETIME
+  }
+
+  entity "deviation_trend_records" as deviation_trend_records {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    equipment_id : VARCHAR(36)
+    equipment_name : VARCHAR(150)
+    variable : VARCHAR(50)
+    period : VARCHAR(20)
+    deviation_count : INT
+    calculated_at : DATETIME
+  }
+
+  entity "audit_log_entries" as audit_log_entries {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    user_id : VARCHAR(36)
+    user_name : VARCHAR(150)
+    action : VARCHAR(100)
+    entity : VARCHAR(100)
+    entity_id : VARCHAR(36)
+    details : TEXT
+    source_ip : VARCHAR(45)
+    occurred_at : DATETIME
+  }
 }
 
-entity "laboratory_regulations" {
-  * <u>lab_id</u> : VARCHAR(36)
-  * <u>regulation</u> : ENUM('BPM_DIGEMID','ISO_9001','ISO_13485','GMP_WHO')
-}
+' ===================== RELATIONSHIPS (FKs) =====================
 
-entity "staff_members" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  lab_id : VARCHAR(36) NOT NULL
-  full_name : VARCHAR(150) NOT NULL
-  role : VARCHAR(50) NOT NULL
-  email : VARCHAR(150) NOT NULL UNIQUE
-  active : BOOLEAN DEFAULT TRUE
-  deactivated_at : DATETIME
-  deactivated_by : VARCHAR(36)
-  created_at : DATETIME NOT NULL
-  updated_at : DATETIME
-  created_by : VARCHAR(36)
-}
+' Only internal (same-context) relationships are represented below.
 
-entity "pharmaceutical_products" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  lab_id : VARCHAR(36) NOT NULL
-  code : VARCHAR(50) NOT NULL
-  name : VARCHAR(150) NOT NULL
-  description : TEXT
-  specifications : TEXT
-  active : BOOLEAN DEFAULT TRUE
-  created_at : DATETIME NOT NULL
-  updated_at : DATETIME
-  created_by : VARCHAR(36)
-}
+' --- IAM context internals ---
+users ||--o{ user_role_assignments : "1..*"
+roles ||--o{ user_role_assignments : "1..*"
+roles ||--o{ role_permissions : "1..*"
+permissions ||--o{ role_permissions : "1..*"
+users ||--o{ password_recovery_tokens : "1..*"
 
-entity "raw_materials" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  lab_id : VARCHAR(36) NOT NULL
-  name : VARCHAR(150) NOT NULL
-  code : VARCHAR(50) NOT NULL
-  supplier : VARCHAR(150) NOT NULL
-  batch_number : VARCHAR(50) NOT NULL
-  expiration_date : DATE NOT NULL
-  quantity_in_stock : DECIMAL(10,3) NOT NULL
-  unit : VARCHAR(20) NOT NULL
-  minimum_stock : DECIMAL(10,3) NOT NULL DEFAULT 0
-  created_at : DATETIME NOT NULL
-  updated_at : DATETIME
-  created_by : VARCHAR(36)
-}
+' --- Laboratory context internals ---
+laboratories ||--o{ laboratory_regulations : "1..*"
+laboratories ||--o{ staff_members : "1..*"
+laboratories ||--o{ pharmaceutical_products : "1..*"
+laboratories ||--o{ raw_materials : "1..*"
 
-' ─── EQUIPMENT MANAGEMENT ────────────────────────────────────────────────────
+' --- Equipment context internals ---
+equipment ||--o{ bpm_parameter_configs : "1..*"
+equipment ||--o{ maintenance_records : "1..*"
 
-entity "equipment" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  lab_id : VARCHAR(36) NOT NULL
-  name : VARCHAR(150) NOT NULL
-  type : ENUM('AUTOCLAVE','PH_METER','THERMOMETER',
-    'PRESSURE_SENSOR','CENTRIFUGE',
-    'SPECTROPHOTOMETER') NOT NULL
-  device_id : VARCHAR(100) UNIQUE
-  status : ENUM('ACTIVE','INACTIVE',
-    'UNDER_MAINTENANCE',
-    'PENDING_CALIBRATION') DEFAULT 'ACTIVE'
-  last_calibration_date : DATE
-  next_calibration_date : DATE
-  created_at : DATETIME NOT NULL
-  updated_at : DATETIME
-  created_by : VARCHAR(36)
-}
+' --- Tracking context internals ---
+measurements ||--o{ telemetry_records : "1..*"
 
-entity "bpm_parameter_configs" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  equipment_id : VARCHAR(36) NOT NULL
-  variable : ENUM('TEMPERATURE','PRESSURE','PH',
-    'HUMIDITY','FLOW_RATE') NOT NULL
-  min_value : DECIMAL(10,4) NOT NULL
-  max_value : DECIMAL(10,4) NOT NULL
-  unit : VARCHAR(20) NOT NULL
-  created_at : DATETIME NOT NULL
-  updated_at : DATETIME
-  updated_by : VARCHAR(36)
-}
+' --- Compliance context internals ---
+compliance_events ||--o{ deviation_alerts : "1..*"
+deviation_alerts ||--o{ alert_notification_logs : "1..*"
 
-entity "maintenance_records" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  equipment_id : VARCHAR(36) NOT NULL
-  maintenance_type : ENUM('PREVENTIVE',
-    'CORRECTIVE','CALIBRATION') NOT NULL
-  date : DATE NOT NULL
-  technician : VARCHAR(150) NOT NULL
-  observations : TEXT
-  created_at : DATETIME NOT NULL
-  created_by : VARCHAR(36) NOT NULL
-}
-
-' ─── TRACKING (IoT) ──────────────────────────────────────────────────────────
-
-entity "device_bindings" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  equipment_id : VARCHAR(36) NOT NULL
-  lab_id : VARCHAR(36) NOT NULL
-  device_id : VARCHAR(100) NOT NULL UNIQUE
-  active : BOOLEAN DEFAULT TRUE
-  bound_at : DATETIME NOT NULL
-  unbound_at : DATETIME
-  bound_by : VARCHAR(36)
-}
-
-entity "measurements" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  equipment_id : VARCHAR(36) NOT NULL
-  batch_id : VARCHAR(36)
-  device_id : VARCHAR(100) NOT NULL
-  temperature : DECIMAL(6,2)
-  pressure : DECIMAL(6,2)
-  ph : DECIMAL(4,2)
-  compliance_result : ENUM('PENDING','CONFORM',
-    'DEVIATION',
-    'CRITICAL_DEVIATION') DEFAULT 'PENDING'
-  recorded_at : DATETIME NOT NULL
-}
-
-entity "telemetry_records" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  equipment_id : VARCHAR(36) NOT NULL
-  measurement_id : VARCHAR(36) NOT NULL
-  variable : ENUM('TEMPERATURE','PRESSURE','PH',
-    'HUMIDITY','FLOW_RATE') NOT NULL
-  value : DECIMAL(10,4) NOT NULL
-  unit : VARCHAR(20) NOT NULL
-  recorded_at : DATETIME NOT NULL
-}
-
-' ─── COMPLIANCE & ALERTING ───────────────────────────────────────────────────
-
-entity "compliance_events" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  measurement_id : VARCHAR(36) NOT NULL
-  equipment_id : VARCHAR(36) NOT NULL
-  batch_id : VARCHAR(36)
-  result : ENUM('CONFORM','WARNING',
-    'DEVIATION',
-    'CRITICAL_DEVIATION') NOT NULL
-  evaluated_at : DATETIME NOT NULL
-}
-
-entity "deviation_alerts" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  compliance_event_id : VARCHAR(36) NOT NULL
-  equipment_id : VARCHAR(36) NOT NULL
-  batch_id : VARCHAR(36)
-  variable : ENUM('TEMPERATURE','PRESSURE','PH',
-    'HUMIDITY','FLOW_RATE') NOT NULL
-  detected_value : DECIMAL(10,4) NOT NULL
-  min_allowed : DECIMAL(10,4) NOT NULL
-  max_allowed : DECIMAL(10,4) NOT NULL
-  severity : ENUM('WARNING','CRITICAL',
-    'CATASTROPHIC') NOT NULL
-  status : ENUM('ACTIVE','ACKNOWLEDGED',
-    'RESOLVED','ESCALATED') DEFAULT 'ACTIVE'
-  triggered_at : DATETIME NOT NULL
-  resolved_at : DATETIME
-  resolved_by : VARCHAR(36)
-  resolution_notes : TEXT
-  created_at : DATETIME NOT NULL
-}
-
-entity "notification_preferences" {
-  * <u>user_id</u> : VARCHAR(36)
-  --
-  email_enabled : BOOLEAN DEFAULT TRUE
-  web_push_enabled : BOOLEAN DEFAULT TRUE
-  sms_enabled : BOOLEAN DEFAULT FALSE
-  updated_at : DATETIME NOT NULL
-}
-
-entity "alert_notification_logs" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  alert_id : VARCHAR(36) NOT NULL
-  user_id : VARCHAR(36) NOT NULL
-  channel : ENUM('EMAIL','WEB_PUSH','SMS') NOT NULL
-  sent_at : DATETIME NOT NULL
-  delivered : BOOLEAN DEFAULT FALSE
-  error_message : VARCHAR(500)
-}
-
-' ─── BATCH MANAGEMENT ────────────────────────────────────────────────────────
-
-entity "batches" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  lab_id : VARCHAR(36) NOT NULL
-  product_id : VARCHAR(36) NOT NULL
-  equipment_id : VARCHAR(36) NOT NULL
-  batch_code : VARCHAR(50) NOT NULL
-  status : ENUM('IN_PROCESS','BLOCKED',
-    'UNDER_INVESTIGATION',
-    'RELEASED','REJECTED',
-    'COMPLETED') DEFAULT 'IN_PROCESS'
-  start_date : DATE NOT NULL
-  end_date : DATE
-  created_at : DATETIME NOT NULL
-  updated_at : DATETIME
-  created_by : VARCHAR(36) NOT NULL
-}
-
-entity "batch_raw_material_usages" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  batch_id : VARCHAR(36) NOT NULL
-  material_id : VARCHAR(36) NOT NULL
-  material_name : VARCHAR(150) NOT NULL
-  supplier : VARCHAR(150) NOT NULL
-  batch_number : VARCHAR(50) NOT NULL
-  quantity_used : DECIMAL(10,3) NOT NULL
-  unit : VARCHAR(20) NOT NULL
-  registered_at : DATETIME NOT NULL
-  registered_by : VARCHAR(36) NOT NULL
-}
-
-entity "digital_signatures" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  batch_id : VARCHAR(36) NOT NULL UNIQUE
-  qa_manager_id : VARCHAR(36) NOT NULL
-  qa_manager_name : VARCHAR(150) NOT NULL
-  observations : TEXT
-  signed_at : DATETIME NOT NULL
-}
-
-entity "rejection_records" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  batch_id : VARCHAR(36) NOT NULL UNIQUE
-  rejected_by : VARCHAR(36) NOT NULL
-  rejected_by_name : VARCHAR(150) NOT NULL
-  root_cause : TEXT NOT NULL
-  corrective_action : TEXT
-  rejected_at : DATETIME NOT NULL
-}
-
-entity "batch_status_history" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  batch_id : VARCHAR(36) NOT NULL
-  previous_status : VARCHAR(50)
-  new_status : VARCHAR(50) NOT NULL
-  changed_at : DATETIME NOT NULL
-  changed_by : VARCHAR(36) NOT NULL
-  reason : TEXT
-}
-
-' ─── REPORTING & AUDIT ───────────────────────────────────────────────────────
-
-entity "audit_reports" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  lab_id : VARCHAR(36) NOT NULL
-  batch_id : VARCHAR(36)
-  equipment_id : VARCHAR(36)
-  generated_by : VARCHAR(36) NOT NULL
-  generated_by_name : VARCHAR(150) NOT NULL
-  report_type : ENUM('BATCH_TRACEABILITY',
-    'COMPLIANCE_PERIOD',
-    'EQUIPMENT_LOG',
-    'KPI_SUMMARY') NOT NULL
-  date_range_from : DATETIME
-  date_range_to : DATETIME
-  file_path : VARCHAR(500) NOT NULL
-  checksum : VARCHAR(255) NOT NULL
-  generated_at : DATETIME NOT NULL
-}
-
-entity "kpi_snapshots" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  lab_id : VARCHAR(36) NOT NULL
-  metric_name : VARCHAR(100) NOT NULL
-  metric_value : DECIMAL(10,4) NOT NULL
-  unit : VARCHAR(20)
-  trend : ENUM('IMPROVING','STABLE','WORSENING')
-  compared_to_previous : DECIMAL(10,4)
-  calculated_at : DATETIME NOT NULL
-  period_from : DATETIME NOT NULL
-  period_to : DATETIME NOT NULL
-}
-
-entity "deviation_trend_records" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  lab_id : VARCHAR(36) NOT NULL
-  equipment_id : VARCHAR(36) NOT NULL
-  equipment_name : VARCHAR(150) NOT NULL
-  variable : VARCHAR(50) NOT NULL
-  period : VARCHAR(20) NOT NULL
-  deviation_count : INT NOT NULL DEFAULT 0
-  calculated_at : DATETIME NOT NULL
-}
-
-entity "audit_log_entries" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  lab_id : VARCHAR(36) NOT NULL
-  user_id : VARCHAR(36) NOT NULL
-  user_name : VARCHAR(150) NOT NULL
-  action : VARCHAR(100) NOT NULL
-  entity : VARCHAR(100) NOT NULL
-  entity_id : VARCHAR(36)
-  details : TEXT
-  source_ip : VARCHAR(45)
-  occurred_at : DATETIME NOT NULL
-}
+' --- Batch context internals ---
+batches ||--o{ batch_raw_material_usages : "1..*"
+batches ||--o| digital_signatures : "1..1"
+batches ||--o| rejection_records : "1..1"
+batches ||--o{ batch_status_history : "1..*"
 
 @enduml
