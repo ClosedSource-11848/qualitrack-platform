@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.closed-source</groupId>
-    <artifactId>closed-source-backend</artifactId>
+    <artifactId>qualitrack-platform</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>ClosedSource-Backend</name>
     <description>ClosedSource-Backend</description>

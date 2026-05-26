@@ -1,4 +1,4 @@
-package com.closedsourcebackend;
+package com.closedsource.qualitrack.platform;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -6,10 +6,10 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @SpringBootApplication
 @EnableJpaAuditing
-public class ClosedSourceBackendApplication {
+public class QualitrackPlatformApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(ClosedSourceBackendApplication.class, args);
+        SpringApplication.run(QualitrackPlatformApplication.class, args);
     }
 
 }

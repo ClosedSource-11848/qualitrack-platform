@@ -1,10 +1,10 @@
-package com.closedsourcebackend;
+package com.closedsource.qualitrack.platform;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class ClosedSourceBackendApplicationTests {
+class QualitrackPlatformApplicationTests {
 
     @Test
     void contextLoads() {
