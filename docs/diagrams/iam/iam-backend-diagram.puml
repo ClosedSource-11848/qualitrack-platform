@@ -1,0 +1,255 @@
+@startuml iam-backend-diagram
+title QualiTrack – IAM Backend
+
+package "domain" {
+
+  abstract class AuditableEntity {
+    +createdAt: LocalDateTime
+    +updatedAt: LocalDateTime
+    +createdBy: String
+  }
+
+  class User {
+    -id: UserId
+    -email: Email
+    -passwordHash: String
+    -fullName: String
+    -role: Role
+    -active: boolean
+    -labId: LabId
+    +register(email: String, password: String, role: Role, labId: LabId): User
+    +authenticate(rawPassword: String): boolean
+    +assignRole(role: Role): void
+    +deactivate(): void
+    +isActive(): boolean
+  }
+
+  class Role {
+    -id: String
+    -name: RoleName
+    -permissions: List<Permission>
+    +hasPermission(permission: Permission): boolean
+    +addPermission(permission: Permission): void
+  }
+
+  class Permission {
+    -id: String
+    -resource: String
+    -action: String
+    +matches(resource: String, action: String): boolean
+  }
+
+  class UserRoleAssignment {
+    -userId: UserId
+    -roleId: String
+    -assignedAt: LocalDateTime
+    -assignedBy: UserId
+  }
+
+  enum RoleName {
+    QA_MANAGER
+    LAB_OPERATOR
+    AUDITOR
+  }
+}
+
+package "domain.valueobjects" {
+
+  class UserId {
+    -value: String
+    +of(value: String): UserId
+    +toString(): String
+  }
+
+  class Email {
+    -value: String
+    +of(value: String): Email
+    +isValid(): boolean
+    +toString(): String
+  }
+
+  class LabId {
+    -value: String
+    +of(value: String): LabId
+    +toString(): String
+  }
+
+  class JwtToken {
+    -value: String
+    -expiresAt: LocalDateTime
+    +isExpired(): boolean
+    +getUserId(): UserId
+    +getRole(): String
+  }
+}
+
+package "domain.events" {
+
+  abstract class DomainEvent {
+    +occurredOn: LocalDateTime
+    +eventId: String
+  }
+
+  class UserRegisteredEvent {
+    +userId: UserId
+    +email: String
+    +role: String
+    +labId: String
+  }
+
+  class UserAuthenticatedEvent {
+    +userId: UserId
+    +email: String
+    +authenticatedAt: LocalDateTime
+  }
+
+  class UserRoleAssignedEvent {
+    +userId: UserId
+    +newRole: String
+    +assignedBy: UserId
+  }
+}
+
+package "domain.repositories" {
+
+  interface UserRepository {
+    +findById(id: UserId): Optional<User>
+    +findByEmail(email: Email): Optional<User>
+    +findByLabId(labId: LabId): List<User>
+    +save(user: User): User
+    +existsByEmail(email: Email): boolean
+  }
+
+  interface RoleRepository {
+    +findByName(name: RoleName): Optional<Role>
+    +findAll(): List<Role>
+  }
+}
+
+package "application" {
+
+  class RegisterUserCommandHandler {
+    -userRepository: UserRepository
+    -passwordEncoder: PasswordEncoder
+    +handle(command: RegisterUserCommand): UserId
+  }
+
+  class AuthenticateUserCommandHandler {
+    -userRepository: UserRepository
+    -jwtService: JwtService
+    -passwordEncoder: PasswordEncoder
+    +handle(command: AuthenticateUserCommand): JwtToken
+  }
+
+  class AssignRoleCommandHandler {
+    -userRepository: UserRepository
+    -roleRepository: RoleRepository
+    +handle(command: AssignRoleCommand): void
+  }
+
+  class RecoverPasswordCommandHandler {
+    -userRepository: UserRepository
+    -emailNotificationService: EmailNotificationService
+    +handle(command: RecoverPasswordCommand): void
+  }
+
+  class GetUserQueryHandler {
+    -userRepository: UserRepository
+    +handle(query: GetUserQuery): UserResource
+  }
+}
+
+package "infrastructure" {
+
+  class JwtService {
+    -secretKey: String
+    -expirationMs: long
+    +generateToken(user: User): JwtToken
+    +validateToken(token: String): boolean
+    +extractUserId(token: String): UserId
+    +extractRole(token: String): String
+  }
+
+  class PasswordEncoder {
+    +encode(rawPassword: String): String
+    +matches(rawPassword: String, encodedPassword: String): boolean
+  }
+
+  interface EmailNotificationService {
+    +sendActivationEmail(email: String, activationLink: String): void
+    +sendPasswordRecoveryEmail(email: String, recoveryLink: String): void
+  }
+}
+
+package "interfaces" {
+
+  class AuthController {
+    -registerHandler: RegisterUserCommandHandler
+    -authenticateHandler: AuthenticateUserCommandHandler
+    -recoverHandler: RecoverPasswordCommandHandler
+    +register(request: RegisterUserRequest): ResponseEntity<UserResource>
+    +login(request: LoginRequest): ResponseEntity<JwtTokenResource>
+    +recoverPassword(request: RecoverPasswordRequest): ResponseEntity<Void>
+  }
+
+  class UserController {
+    -getUserHandler: GetUserQueryHandler
+    -assignRoleHandler: AssignRoleCommandHandler
+    +getUserById(userId: String): ResponseEntity<UserResource>
+    +getUsersByLab(labId: String): ResponseEntity<List<UserResource>>
+    +assignRole(userId: String, request: AssignRoleRequest): ResponseEntity<Void>
+    +deactivateUser(userId: String): ResponseEntity<Void>
+  }
+
+  class UserResource {
+    +id: String
+    +email: String
+    +fullName: String
+    +role: String
+    +labId: String
+    +active: boolean
+    +createdAt: String
+  }
+
+  class JwtTokenResource {
+    +accessToken: String
+    +tokenType: String
+    +expiresIn: long
+    +userId: String
+    +role: String
+  }
+}
+
+User --|> AuditableEntity
+UserRegisteredEvent --|> DomainEvent
+UserAuthenticatedEvent --|> DomainEvent
+UserRoleAssignedEvent --|> DomainEvent
+
+User --> Role
+Role --> Permission
+UserRoleAssignment --> UserId
+UserRoleAssignment --> RoleName
+User --> UserId
+User --> Email
+User --> LabId
+User --> RoleName
+JwtToken --> UserId
+
+RegisterUserCommandHandler --> UserRepository
+RegisterUserCommandHandler --> PasswordEncoder
+AuthenticateUserCommandHandler --> UserRepository
+AuthenticateUserCommandHandler --> JwtService
+AuthenticateUserCommandHandler --> PasswordEncoder
+AssignRoleCommandHandler --> UserRepository
+AssignRoleCommandHandler --> RoleRepository
+RecoverPasswordCommandHandler --> UserRepository
+RecoverPasswordCommandHandler --> EmailNotificationService
+GetUserQueryHandler --> UserRepository
+
+AuthController --> RegisterUserCommandHandler
+AuthController --> AuthenticateUserCommandHandler
+AuthController --> RecoverPasswordCommandHandler
+UserController --> GetUserQueryHandler
+UserController --> AssignRoleCommandHandler
+
+@enduml

@@ -1,0 +1,77 @@
+@startuml iam-database-diagram
+title QualiTrack – IAM Database
+
+hide methods
+hide stereotypes
+
+entity "users" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  lab_id : VARCHAR(36) FK
+  full_name : VARCHAR(150) NOT NULL
+  email : VARCHAR(150) NOT NULL UNIQUE
+  password_hash : VARCHAR(255) NOT NULL
+  role : ENUM('QA_MANAGER','LAB_OPERATOR','AUDITOR') NOT NULL
+  active : BOOLEAN DEFAULT TRUE
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME
+  created_by : VARCHAR(36)
+}
+
+entity "roles" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  name : VARCHAR(50) NOT NULL UNIQUE
+}
+
+entity "permissions" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  resource : VARCHAR(100) NOT NULL
+  action : VARCHAR(50) NOT NULL
+}
+
+entity "role_permissions" {
+  * <u>role_id</u> : VARCHAR(36) FK
+  * <u>permission_id</u> : VARCHAR(36) FK
+}
+
+entity "user_role_assignments" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  user_id : VARCHAR(36) FK NOT NULL
+  role_id : VARCHAR(36) FK NOT NULL
+  assigned_at : DATETIME NOT NULL
+  assigned_by : VARCHAR(36) FK
+}
+
+entity "password_recovery_tokens" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  user_id : VARCHAR(36) FK NOT NULL
+  token_hash : VARCHAR(255) NOT NULL
+  expires_at : DATETIME NOT NULL
+  used : BOOLEAN DEFAULT FALSE
+  created_at : DATETIME NOT NULL
+}
+
+users ||--o{ user_role_assignments : "tiene asignados"
+roles ||--o{ user_role_assignments : "asignado a"
+roles ||--o{ role_permissions : "tiene"
+permissions ||--o{ role_permissions : "pertenece a"
+users ||--o{ password_recovery_tokens : "solicita"
+
+note right of users
+  Índices:
+  - IDX_users_email (email)
+  - IDX_users_lab_id (lab_id)
+  - IDX_users_role (role)
+  - IDX_users_active (active)
+end note
+
+note right of user_role_assignments
+  PK compuesta:
+  (user_id, role_id)
+end note
+
+@enduml

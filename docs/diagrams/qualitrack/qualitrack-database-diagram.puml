@@ -1,0 +1,436 @@
+@startuml qualitrack-database-diagram
+title QualiTrack – Complete Database Diagram by Bounded Contexts
+
+hide methods
+hide stereotypes
+hide circle
+skinparam linetype ortho
+
+skinparam class {
+  BackgroundColor #FEFEFE
+  BorderColor #333333
+  ArrowColor #333333
+  HeaderBackgroundColor #2d6aa0
+  HeaderFontColor #FFFFFF
+  FontSize 11
+}
+
+' ===================== IAM =====================
+package "IAM Context" {
+
+  entity "users" as users {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    full_name : VARCHAR(150)
+    email : VARCHAR(150)
+    password_hash : VARCHAR(255)
+    role : ENUM(...)
+    active : BOOLEAN
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "roles" as roles {
+    * id : VARCHAR(36)
+    --
+    name : VARCHAR(50)
+  }
+
+  entity "permissions" as permissions {
+    * id : VARCHAR(36)
+    --
+    resource : VARCHAR(100)
+    action : VARCHAR(50)
+  }
+
+  entity "role_permissions" as role_permissions {
+    * role_id : VARCHAR(36)
+    * permission_id : VARCHAR(36)
+  }
+
+  entity "user_role_assignments" as user_role_assignments {
+    * id : VARCHAR(36)
+    --
+    user_id : VARCHAR(36)
+    role_id : VARCHAR(36)
+    assigned_at : DATETIME
+    assigned_by : VARCHAR(36)
+  }
+
+  entity "password_recovery_tokens" as password_recovery_tokens {
+    * id : VARCHAR(36)
+    --
+    user_id : VARCHAR(36)
+    token_hash : VARCHAR(255)
+    expires_at : DATETIME
+    used : BOOLEAN
+    created_at : DATETIME
+  }
+}
+
+' ===================== LABORATORY =====================
+package "Laboratory Context" {
+
+  entity "laboratories" as laboratories {
+    * id : VARCHAR(36)
+    --
+    name : VARCHAR(150)
+    ruc : VARCHAR(20)
+    address : VARCHAR(255)
+    phone : VARCHAR(20)
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "laboratory_regulations" as laboratory_regulations {
+    * lab_id : VARCHAR(36)
+    * regulation : ENUM(...)
+  }
+
+  entity "staff_members" as staff_members {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    full_name : VARCHAR(150)
+    role : VARCHAR(50)
+    email : VARCHAR(150)
+    active : BOOLEAN
+    deactivated_at : DATETIME
+    deactivated_by : VARCHAR(36)
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "pharmaceutical_products" as pharmaceutical_products {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    code : VARCHAR(50)
+    name : VARCHAR(150)
+    description : TEXT
+    specifications : TEXT
+    active : BOOLEAN
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "raw_materials" as raw_materials {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    name : VARCHAR(150)
+    code : VARCHAR(50)
+    supplier : VARCHAR(150)
+    batch_number : VARCHAR(50)
+    expiration_date : DATE
+    quantity_in_stock : DECIMAL(10,3)
+    unit : VARCHAR(20)
+    minimum_stock : DECIMAL(10,3)
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+}
+
+' ===================== EQUIPMENT =====================
+package "Equipment Context" {
+
+  entity "equipment" as equipment {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    name : VARCHAR(150)
+    type : ENUM(...)
+    device_id : VARCHAR(100)
+    status : ENUM(...)
+    last_calibration_date : DATE
+    next_calibration_date : DATE
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "bpm_parameter_configs" as bpm_parameter_configs {
+    * id : VARCHAR(36)
+    --
+    equipment_id : VARCHAR(36)
+    variable : ENUM(...)
+    min_value : DECIMAL(10,4)
+    max_value : DECIMAL(10,4)
+    unit : VARCHAR(20)
+    created_at : DATETIME
+    updated_at : DATETIME
+    updated_by : VARCHAR(36)
+  }
+
+  entity "maintenance_records" as maintenance_records {
+    * id : VARCHAR(36)
+    --
+    equipment_id : VARCHAR(36)
+    maintenance_type : ENUM(...)
+    date : DATE
+    technician : VARCHAR(150)
+    observations : TEXT
+    created_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+}
+
+' ===================== TRACKING (IoT) =====================
+package "Tracking Context" {
+
+  entity "device_bindings" as device_bindings {
+    * id : VARCHAR(36)
+    --
+    equipment_id : VARCHAR(36)
+    lab_id : VARCHAR(36)
+    device_id : VARCHAR(100)
+    active : BOOLEAN
+    bound_at : DATETIME
+    unbound_at : DATETIME
+    bound_by : VARCHAR(36)
+  }
+
+  entity "measurements" as measurements {
+    * id : VARCHAR(36)
+    --
+    equipment_id : VARCHAR(36)
+    batch_id : VARCHAR(36)
+    device_id : VARCHAR(100)
+    temperature : DECIMAL(6,2)
+    pressure : DECIMAL(6,2)
+    ph : DECIMAL(4,2)
+    compliance_result : ENUM(...)
+    recorded_at : DATETIME
+  }
+
+  entity "telemetry_records" as telemetry_records {
+    * id : VARCHAR(36)
+    --
+    equipment_id : VARCHAR(36)
+    measurement_id : VARCHAR(36)
+    variable : ENUM(...)
+    value : DECIMAL(10,4)
+    unit : VARCHAR(20)
+    recorded_at : DATETIME
+  }
+}
+
+' ===================== COMPLIANCE & ALERTING =====================
+package "Compliance Context" {
+
+  entity "compliance_events" as compliance_events {
+    * id : VARCHAR(36)
+    --
+    measurement_id : VARCHAR(36)
+    equipment_id : VARCHAR(36)
+    batch_id : VARCHAR(36)
+    result : ENUM(...)
+    evaluated_at : DATETIME
+  }
+
+  entity "deviation_alerts" as deviation_alerts {
+    * id : VARCHAR(36)
+    --
+    compliance_event_id : VARCHAR(36)
+    equipment_id : VARCHAR(36)
+    batch_id : VARCHAR(36)
+    variable : ENUM(...)
+    detected_value : DECIMAL(10,4)
+    min_allowed : DECIMAL(10,4)
+    max_allowed : DECIMAL(10,4)
+    severity : ENUM(...)
+    status : ENUM(...)
+    triggered_at : DATETIME
+    resolved_at : DATETIME
+    resolved_by : VARCHAR(36)
+    resolution_notes : TEXT
+    created_at : DATETIME
+  }
+
+  entity "notification_preferences" as notification_preferences {
+    * user_id : VARCHAR(36)
+    --
+    email_enabled : BOOLEAN
+    web_push_enabled : BOOLEAN
+    sms_enabled : BOOLEAN
+    updated_at : DATETIME
+  }
+
+  entity "alert_notification_logs" as alert_notification_logs {
+    * id : VARCHAR(36)
+    --
+    alert_id : VARCHAR(36)
+    user_id : VARCHAR(36)
+    channel : ENUM(...)
+    sent_at : DATETIME
+    delivered : BOOLEAN
+    error_message : VARCHAR(500)
+  }
+}
+
+' ===================== BATCH MANAGEMENT =====================
+package "Batch Context" {
+
+  entity "batches" as batches {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    product_id : VARCHAR(36)
+    equipment_id : VARCHAR(36)
+    batch_code : VARCHAR(50)
+    status : ENUM(...)
+    start_date : DATE
+    end_date : DATE
+    created_at : DATETIME
+    updated_at : DATETIME
+    created_by : VARCHAR(36)
+  }
+
+  entity "batch_raw_material_usages" as batch_raw_material_usages {
+    * id : VARCHAR(36)
+    --
+    batch_id : VARCHAR(36)
+    material_id : VARCHAR(36)
+    material_name : VARCHAR(150)
+    supplier : VARCHAR(150)
+    batch_number : VARCHAR(50)
+    quantity_used : DECIMAL(10,3)
+    unit : VARCHAR(20)
+    registered_at : DATETIME
+    registered_by : VARCHAR(36)
+  }
+
+  entity "digital_signatures" as digital_signatures {
+    * id : VARCHAR(36)
+    --
+    batch_id : VARCHAR(36)
+    qa_manager_id : VARCHAR(36)
+    qa_manager_name : VARCHAR(150)
+    observations : TEXT
+    signed_at : DATETIME
+  }
+
+  entity "rejection_records" as rejection_records {
+    * id : VARCHAR(36)
+    --
+    batch_id : VARCHAR(36)
+    rejected_by : VARCHAR(36)
+    rejected_by_name : VARCHAR(150)
+    root_cause : TEXT
+    corrective_action : TEXT
+    rejected_at : DATETIME
+  }
+
+  entity "batch_status_history" as batch_status_history {
+    * id : VARCHAR(36)
+    --
+    batch_id : VARCHAR(36)
+    previous_status : VARCHAR(50)
+    new_status : VARCHAR(50)
+    changed_at : DATETIME
+    changed_by : VARCHAR(36)
+    reason : TEXT
+  }
+}
+
+' ===================== REPORTING & AUDIT =====================
+package "Reporting Context" {
+
+  entity "audit_reports" as audit_reports {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    batch_id : VARCHAR(36)
+    equipment_id : VARCHAR(36)
+    generated_by : VARCHAR(36)
+    generated_by_name : VARCHAR(150)
+    report_type : ENUM(...)
+    date_range_from : DATETIME
+    date_range_to : DATETIME
+    file_path : VARCHAR(500)
+    checksum : VARCHAR(255)
+    generated_at : DATETIME
+  }
+
+  entity "kpi_snapshots" as kpi_snapshots {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    metric_name : VARCHAR(100)
+    metric_value : DECIMAL(10,4)
+    unit : VARCHAR(20)
+    trend : ENUM(...)
+    compared_to_previous : DECIMAL(10,4)
+    calculated_at : DATETIME
+    period_from : DATETIME
+    period_to : DATETIME
+  }
+
+  entity "deviation_trend_records" as deviation_trend_records {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    equipment_id : VARCHAR(36)
+    equipment_name : VARCHAR(150)
+    variable : VARCHAR(50)
+    period : VARCHAR(20)
+    deviation_count : INT
+    calculated_at : DATETIME
+  }
+
+  entity "audit_log_entries" as audit_log_entries {
+    * id : VARCHAR(36)
+    --
+    lab_id : VARCHAR(36)
+    user_id : VARCHAR(36)
+    user_name : VARCHAR(150)
+    action : VARCHAR(100)
+    entity : VARCHAR(100)
+    entity_id : VARCHAR(36)
+    details : TEXT
+    source_ip : VARCHAR(45)
+    occurred_at : DATETIME
+  }
+}
+
+' ===================== RELATIONSHIPS (FKs) =====================
+
+' Only internal (same-context) relationships are represented below.
+
+' --- IAM context internals ---
+users ||--o{ user_role_assignments : "1..*"
+roles ||--o{ user_role_assignments : "1..*"
+roles ||--o{ role_permissions : "1..*"
+permissions ||--o{ role_permissions : "1..*"
+users ||--o{ password_recovery_tokens : "1..*"
+
+' --- Laboratory context internals ---
+laboratories ||--o{ laboratory_regulations : "1..*"
+laboratories ||--o{ staff_members : "1..*"
+laboratories ||--o{ pharmaceutical_products : "1..*"
+laboratories ||--o{ raw_materials : "1..*"
+
+' --- Equipment context internals ---
+equipment ||--o{ bpm_parameter_configs : "1..*"
+equipment ||--o{ maintenance_records : "1..*"
+
+' --- Tracking context internals ---
+measurements ||--o{ telemetry_records : "1..*"
+
+' --- Compliance context internals ---
+compliance_events ||--o{ deviation_alerts : "1..*"
+deviation_alerts ||--o{ alert_notification_logs : "1..*"
+
+' --- Batch context internals ---
+batches ||--o{ batch_raw_material_usages : "1..*"
+batches ||--o| digital_signatures : "1..1"
+batches ||--o| rejection_records : "1..1"
+batches ||--o{ batch_status_history : "1..*"
+
+@enduml

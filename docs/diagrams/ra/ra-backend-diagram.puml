@@ -1,0 +1,287 @@
+@startuml reporting-backend-diagram
+title QualiTrack – Reporting & Audit Backend
+
+package "domain" {
+
+  abstract class AuditableEntity {
+    +createdAt: LocalDateTime
+    +updatedAt: LocalDateTime
+    +createdBy: String
+  }
+
+  class AuditReport {
+    -id: ReportId
+    -labId: LabId
+    -batchId: BatchId
+    -reportType: ReportType
+    -generatedBy: UserId
+    -generatedAt: LocalDateTime
+    -filePath: String
+    -checksum: String
+    +generate(labId: LabId, batchId: BatchId, generatedBy: UserId): AuditReport
+    +setFilePath(filePath: String): void
+    +computeChecksum(content: byte[]): String
+    +isImmutable(): boolean
+  }
+
+  class ComplianceReport {
+    -id: ReportId
+    -labId: LabId
+    -dateRange: DateRange
+    -totalBatches: int
+    -conformBatches: int
+    -deviationCount: int
+    -compliancePercentage: double
+    -generatedBy: UserId
+    -generatedAt: LocalDateTime
+    +generate(labId: LabId, dateRange: DateRange): ComplianceReport
+    +computeCompliancePercentage(): double
+  }
+
+  class KpiMetric {
+    -name: String
+    -value: double
+    -unit: String
+    -trend: Trend
+    -comparedToPreviousPeriod: double
+    -labId: LabId
+    -calculatedAt: LocalDateTime
+    +of(name: String, value: double, unit: String): KpiMetric
+    +computeTrend(previousValue: double): Trend
+  }
+
+  class DeviationTrend {
+    -equipmentId: EquipmentId
+    -equipmentName: String
+    -variable: String
+    -period: String
+    -deviationCount: int
+    +of(equipmentId: EquipmentId, variable: String, period: String): DeviationTrend
+  }
+
+  class AuditLogEntry {
+    -id: AuditLogId
+    -userId: UserId
+    -userName: String
+    -action: String
+    -entity: String
+    -entityId: String
+    -details: String
+    -occurredAt: LocalDateTime
+    +record(userId: UserId, action: String, entity: String, entityId: String): AuditLogEntry
+  }
+
+  enum ReportType {
+    BATCH_TRACEABILITY
+    COMPLIANCE_PERIOD
+    EQUIPMENT_LOG
+    KPI_SUMMARY
+  }
+
+  enum Trend {
+    IMPROVING
+    STABLE
+    WORSENING
+  }
+}
+
+package "domain.valueobjects" {
+
+  class ReportId {
+    -value: String
+    +of(value: String): ReportId
+    +toString(): String
+  }
+
+  class AuditLogId {
+    -value: String
+    +of(value: String): AuditLogId
+    +toString(): String
+  }
+
+  class LabId {
+    -value: String
+    +of(value: String): LabId
+    +toString(): String
+  }
+
+  class BatchId {
+    -value: String
+    +of(value: String): BatchId
+    +toString(): String
+  }
+
+  class EquipmentId {
+    -value: String
+    +of(value: String): EquipmentId
+    +toString(): String
+  }
+
+  class UserId {
+    -value: String
+    +of(value: String): UserId
+    +toString(): String
+  }
+
+  class DateRange {
+    -from: LocalDateTime
+    -to: LocalDateTime
+    +of(from: LocalDateTime, to: LocalDateTime): DateRange
+    +isValid(): boolean
+    +getDurationDays(): long
+  }
+}
+
+package "domain.repositories" {
+
+  interface AuditReportRepository {
+    +findById(id: ReportId): Optional<AuditReport>
+    +findByBatchId(batchId: BatchId): List<AuditReport>
+    +findByLabId(labId: LabId): List<AuditReport>
+    +save(report: AuditReport): AuditReport
+  }
+
+  interface AuditLogRepository {
+    +findByLabId(labId: LabId): List<AuditLogEntry>
+    +findByUserId(userId: UserId): List<AuditLogEntry>
+    +findByDateRange(labId: LabId, range: DateRange): List<AuditLogEntry>
+    +save(entry: AuditLogEntry): AuditLogEntry
+  }
+}
+
+package "application" {
+
+  class GenerateBatchReportCommandHandler {
+    -auditReportRepository: AuditReportRepository
+    -batchDataProvider: BatchDataProvider
+    -pdfGenerationService: PdfGenerationService
+    +handle(command: GenerateBatchReportCommand): byte[]
+    -buildBatchReportContent(batch: BatchData): ReportContent
+    -ensureImmutability(content: byte[]): String
+  }
+
+  class GenerateComplianceReportCommandHandler {
+    -complianceDataProvider: ComplianceDataProvider
+    -pdfGenerationService: PdfGenerationService
+    +handle(command: GenerateComplianceReportCommand): byte[]
+    -buildComplianceSummary(labId: LabId, range: DateRange): ComplianceReport
+  }
+
+  class ExportEquipmentLogCommandHandler {
+    -measurementDataProvider: MeasurementDataProvider
+    -pdfGenerationService: PdfGenerationService
+    +handle(command: ExportEquipmentLogCommand): byte[]
+  }
+
+  class GetKpiDashboardQueryHandler {
+    -batchDataProvider: BatchDataProvider
+    -complianceDataProvider: ComplianceDataProvider
+    -measurementDataProvider: MeasurementDataProvider
+    +handle(query: GetKpiDashboardQuery): KpiDashboardData
+    -computeConformBatchesKpi(labId: LabId): KpiMetric
+    -computeDeviationsKpi(labId: LabId): KpiMetric
+    -computeAvgReleaseTimeKpi(labId: LabId): KpiMetric
+  }
+
+  class GetDeviationTrendsQueryHandler {
+    -complianceDataProvider: ComplianceDataProvider
+    +handle(query: GetDeviationTrendsQuery): List<DeviationTrend>
+  }
+
+  class GetAuditLogQueryHandler {
+    -auditLogRepository: AuditLogRepository
+    +handle(query: GetAuditLogQuery): List<AuditLogEntry>
+  }
+
+  interface PdfGenerationService {
+    +generate(content: ReportContent): byte[]
+    +generateImmutable(content: ReportContent): byte[]
+  }
+
+  interface BatchDataProvider {
+    +getBatchWithHistory(batchId: BatchId): BatchData
+    +getBatchesByLabAndPeriod(labId: LabId, range: DateRange): List<BatchData>
+  }
+
+  interface ComplianceDataProvider {
+    +getDeviationsByLabAndPeriod(labId: LabId, range: DateRange): List<DeviationData>
+    +getDeviationTrends(labId: LabId, range: DateRange): List<DeviationTrend>
+  }
+
+  interface MeasurementDataProvider {
+    +getMeasurementsByEquipmentAndPeriod(equipmentId: EquipmentId, range: DateRange): List<MeasurementData>
+  }
+}
+
+package "interfaces" {
+
+  class ReportController {
+    -generateBatchReportHandler: GenerateBatchReportCommandHandler
+    -generateComplianceReportHandler: GenerateComplianceReportCommandHandler
+    -exportEquipmentLogHandler: ExportEquipmentLogCommandHandler
+    +generateBatchReport(labId: String, batchId: String): ResponseEntity<byte[]>
+    +generateComplianceReport(labId: String, from: String, to: String): ResponseEntity<byte[]>
+    +exportEquipmentLog(labId: String, equipmentId: String, from: String, to: String): ResponseEntity<byte[]>
+  }
+
+  class AnalyticsController {
+    -getKpiHandler: GetKpiDashboardQueryHandler
+    -getTrendsHandler: GetDeviationTrendsQueryHandler
+    +getKpiDashboard(labId: String): ResponseEntity<KpiDashboardResource>
+    +getDeviationTrends(labId: String, from: String, to: String): ResponseEntity<List<DeviationTrendResource>>
+  }
+
+  class AuditLogController {
+    -getAuditLogHandler: GetAuditLogQueryHandler
+    +getAuditLog(labId: String, from: String, to: String): ResponseEntity<List<AuditLogResource>>
+  }
+
+  class KpiDashboardResource {
+    +conformBatchesPercentage: double
+    +totalDeviationsThisMonth: int
+    +averageBatchReleaseTimeMinutes: double
+    +lowStockMaterialsCount: int
+    +equipmentWithExpiredCalibration: int
+    +kpis: List<KpiMetricResource>
+  }
+}
+
+AuditReport --|> AuditableEntity
+AuditLogEntry --|> AuditableEntity
+
+AuditReport --> ReportId
+AuditReport --> LabId
+AuditReport --> BatchId
+AuditReport --> ReportType
+AuditReport --> UserId
+ComplianceReport --> ReportId
+ComplianceReport --> LabId
+ComplianceReport --> DateRange
+ComplianceReport --> UserId
+KpiMetric --> LabId
+KpiMetric --> Trend
+DeviationTrend --> EquipmentId
+AuditLogEntry --> AuditLogId
+AuditLogEntry --> UserId
+
+GenerateBatchReportCommandHandler --> AuditReportRepository
+GenerateBatchReportCommandHandler --> BatchDataProvider
+GenerateBatchReportCommandHandler --> PdfGenerationService
+GenerateComplianceReportCommandHandler --> ComplianceDataProvider
+GenerateComplianceReportCommandHandler --> PdfGenerationService
+ExportEquipmentLogCommandHandler --> MeasurementDataProvider
+ExportEquipmentLogCommandHandler --> PdfGenerationService
+GetKpiDashboardQueryHandler --> BatchDataProvider
+GetKpiDashboardQueryHandler --> ComplianceDataProvider
+GetKpiDashboardQueryHandler --> MeasurementDataProvider
+GetDeviationTrendsQueryHandler --> ComplianceDataProvider
+GetAuditLogQueryHandler --> AuditLogRepository
+
+ReportController --> GenerateBatchReportCommandHandler
+ReportController --> GenerateComplianceReportCommandHandler
+ReportController --> ExportEquipmentLogCommandHandler
+AnalyticsController --> GetKpiDashboardQueryHandler
+AnalyticsController --> GetDeviationTrendsQueryHandler
+AuditLogController --> GetAuditLogQueryHandler
+
+@enduml

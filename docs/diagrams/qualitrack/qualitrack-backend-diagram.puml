@@ -1,0 +1,77 @@
+@startuml qualitrack-backend-diagram
+title QualiTrack – Backend Complete Diagram
+
+package "IAM" {
+  class User
+  class Role
+  class Permission
+  class AuthenticationService
+  class UserRepository
+}
+
+package "LaboratoryManagement" {
+  class Laboratory
+  class StaffMember
+  class ProductCatalog
+  class RawMaterial
+  class LaboratoryRepository
+}
+
+package "EquipmentManagement" {
+  class Equipment
+  class BpmParameterConfig
+  class MaintenanceRecord
+  class CalibrationRecord
+  class EquipmentRepository
+}
+
+package "Tracking" {
+  class Measurement
+  class DeviceBinding
+  class TelemetryRecord
+  class TelemetryIngestionService
+  class MeasurementRepository
+}
+
+package "ComplianceAlerting" {
+  class ComplianceEvent
+  class DeviationAlert
+  class BpmEvaluationService
+  class ComplianceRepository
+}
+
+package "BatchManagement" {
+  class Batch
+  class BatchStatus
+  class RawMaterialUsage
+  class BatchRepository
+}
+
+package "ReportingAudit" {
+  class AuditReport
+  class ComplianceReport
+  class KpiMetric
+  class ReportingService
+}
+
+package "Shared" {
+  abstract class AuditableEntity
+  class LabId
+  class UserId
+  class DateRange
+  class Quantity
+  abstract class DomainEvent
+}
+
+User --|> AuditableEntity
+Laboratory --|> AuditableEntity
+Equipment --|> AuditableEntity
+Measurement --|> AuditableEntity
+ComplianceEvent --|> AuditableEntity
+Batch --|> AuditableEntity
+
+TelemetryIngestionService ..> BpmEvaluationService : triggers
+BpmEvaluationService ..> ComplianceEvent : creates
+ComplianceEvent ..> Batch : blocks
+
+@enduml

@@ -1,0 +1,298 @@
+@startuml laboratory-backend-diagram
+title QualiTrack – Laboratory Management Backend
+
+package "domain" {
+
+  abstract class AuditableEntity {
+    +createdAt: LocalDateTime
+    +updatedAt: LocalDateTime
+    +createdBy: String
+  }
+
+  class Laboratory {
+    -id: LabId
+    -name: String
+    -ruc: String
+    -address: String
+    -phone: String
+    -applicableRegulations: List<Regulation>
+    +register(name: String, ruc: String): Laboratory
+    +updateInfo(name: String, address: String, phone: String): void
+    +addRegulation(regulation: Regulation): void
+    +removeRegulation(regulation: Regulation): void
+  }
+
+  class StaffMember {
+    -id: StaffId
+    -labId: LabId
+    -fullName: String
+    -role: String
+    -email: String
+    -active: boolean
+    +register(labId: LabId, fullName: String, role: String, email: String): StaffMember
+    +deactivate(): void
+    +isActive(): boolean
+  }
+
+  class PharmaceuticalProduct {
+    -id: ProductId
+    -labId: LabId
+    -code: String
+    -name: String
+    -description: String
+    -specifications: String
+    -active: boolean
+    +register(labId: LabId, code: String, name: String): PharmaceuticalProduct
+    +updateSpecifications(specifications: String): void
+    +deactivate(): void
+  }
+
+  class RawMaterial {
+    -id: RawMaterialId
+    -labId: LabId
+    -name: String
+    -code: String
+    -supplier: String
+    -batchNumber: String
+    -expirationDate: LocalDate
+    -quantityInStock: Quantity
+    -minimumStock: Quantity
+    +register(labId: LabId, name: String, code: String): RawMaterial
+    +updateStock(quantity: Quantity): void
+    +isExpired(): boolean
+    +isBelowMinimumStock(): boolean
+  }
+
+  enum Regulation {
+    BPM_DIGEMID
+    ISO_9001
+    ISO_13485
+    GMP_WHO
+  }
+}
+
+package "domain.valueobjects" {
+
+  class LabId {
+    -value: String
+    +of(value: String): LabId
+    +toString(): String
+  }
+
+  class StaffId {
+    -value: String
+    +of(value: String): StaffId
+    +toString(): String
+  }
+
+  class ProductId {
+    -value: String
+    +of(value: String): ProductId
+    +toString(): String
+  }
+
+  class RawMaterialId {
+    -value: String
+    +of(value: String): RawMaterialId
+    +toString(): String
+  }
+
+  class Quantity {
+    -value: double
+    -unit: String
+    +of(value: double, unit: String): Quantity
+    +add(other: Quantity): Quantity
+    +subtract(other: Quantity): Quantity
+    +isGreaterThan(other: Quantity): boolean
+  }
+}
+
+package "domain.events" {
+
+  abstract class DomainEvent {
+    +occurredOn: LocalDateTime
+    +eventId: String
+  }
+
+  class LaboratoryRegisteredEvent {
+    +labId: LabId
+    +name: String
+    +ruc: String
+  }
+
+  class StaffRegisteredEvent {
+    +staffId: StaffId
+    +labId: LabId
+    +email: String
+    +role: String
+  }
+
+  class StaffDeactivatedEvent {
+    +staffId: StaffId
+    +labId: LabId
+    +deactivatedAt: LocalDateTime
+  }
+
+  class RawMaterialLowStockEvent {
+    +materialId: RawMaterialId
+    +labId: LabId
+    +currentStock: Quantity
+    +minimumStock: Quantity
+  }
+}
+
+package "domain.repositories" {
+
+  interface LaboratoryRepository {
+    +findById(id: LabId): Optional<Laboratory>
+    +save(laboratory: Laboratory): Laboratory
+    +existsByRuc(ruc: String): boolean
+  }
+
+  interface StaffRepository {
+    +findById(id: StaffId): Optional<StaffMember>
+    +findByLabId(labId: LabId): List<StaffMember>
+    +findActiveByLabId(labId: LabId): List<StaffMember>
+    +save(staff: StaffMember): StaffMember
+    +existsByEmail(email: String): boolean
+  }
+
+  interface ProductRepository {
+    +findById(id: ProductId): Optional<PharmaceuticalProduct>
+    +findByLabId(labId: LabId): List<PharmaceuticalProduct>
+    +save(product: PharmaceuticalProduct): PharmaceuticalProduct
+    +existsByCode(code: String, labId: LabId): boolean
+  }
+
+  interface RawMaterialRepository {
+    +findById(id: RawMaterialId): Optional<RawMaterial>
+    +findByLabId(labId: LabId): List<RawMaterial>
+    +findBelowMinimumStock(labId: LabId): List<RawMaterial>
+    +save(material: RawMaterial): RawMaterial
+  }
+}
+
+package "application" {
+
+  class RegisterLaboratoryCommandHandler {
+    -laboratoryRepository: LaboratoryRepository
+    +handle(command: RegisterLaboratoryCommand): LabId
+  }
+
+  class UpdateLaboratoryCommandHandler {
+    -laboratoryRepository: LaboratoryRepository
+    +handle(command: UpdateLaboratoryCommand): void
+  }
+
+  class RegisterStaffCommandHandler {
+    -staffRepository: StaffRepository
+    -emailNotificationService: EmailNotificationService
+    +handle(command: RegisterStaffCommand): StaffId
+  }
+
+  class DeactivateStaffCommandHandler {
+    -staffRepository: StaffRepository
+    +handle(command: DeactivateStaffCommand): void
+  }
+
+  class RegisterProductCommandHandler {
+    -productRepository: ProductRepository
+    +handle(command: RegisterProductCommand): ProductId
+  }
+
+  class RegisterRawMaterialCommandHandler {
+    -rawMaterialRepository: RawMaterialRepository
+    +handle(command: RegisterRawMaterialCommand): RawMaterialId
+  }
+
+  class GetLaboratoryQueryHandler {
+    -laboratoryRepository: LaboratoryRepository
+    +handle(query: GetLaboratoryQuery): LaboratoryResource
+  }
+
+  class GetStaffQueryHandler {
+    -staffRepository: StaffRepository
+    +handle(query: GetStaffQuery): List<StaffResource>
+  }
+
+  class GetRawMaterialsQueryHandler {
+    -rawMaterialRepository: RawMaterialRepository
+    +handle(query: GetRawMaterialsQuery): List<RawMaterialResource>
+  }
+}
+
+package "interfaces" {
+
+  class LaboratoryController {
+    -getLaboratoryHandler: GetLaboratoryQueryHandler
+    -registerHandler: RegisterLaboratoryCommandHandler
+    -updateHandler: UpdateLaboratoryCommandHandler
+    +getLaboratory(labId: String): ResponseEntity<LaboratoryResource>
+    +updateLaboratory(labId: String, request: UpdateLaboratoryRequest): ResponseEntity<LaboratoryResource>
+  }
+
+  class StaffController {
+    -getStaffHandler: GetStaffQueryHandler
+    -registerStaffHandler: RegisterStaffCommandHandler
+    -deactivateStaffHandler: DeactivateStaffCommandHandler
+    +getStaff(labId: String): ResponseEntity<List<StaffResource>>
+    +registerStaff(labId: String, request: RegisterStaffRequest): ResponseEntity<StaffResource>
+    +deactivateStaff(labId: String, staffId: String): ResponseEntity<Void>
+  }
+
+  class ProductController {
+    -registerProductHandler: RegisterProductCommandHandler
+    +getProducts(labId: String): ResponseEntity<List<ProductResource>>
+    +createProduct(labId: String, request: CreateProductRequest): ResponseEntity<ProductResource>
+  }
+
+  class RawMaterialController {
+    -getRawMaterialsHandler: GetRawMaterialsQueryHandler
+    -registerRawMaterialHandler: RegisterRawMaterialCommandHandler
+    +getRawMaterials(labId: String): ResponseEntity<List<RawMaterialResource>>
+    +createRawMaterial(labId: String, request: CreateRawMaterialRequest): ResponseEntity<RawMaterialResource>
+    +getLowStockAlerts(labId: String): ResponseEntity<List<RawMaterialResource>>
+  }
+}
+
+Laboratory --|> AuditableEntity
+StaffMember --|> AuditableEntity
+PharmaceuticalProduct --|> AuditableEntity
+RawMaterial --|> AuditableEntity
+
+LaboratoryRegisteredEvent --|> DomainEvent
+StaffRegisteredEvent --|> DomainEvent
+StaffDeactivatedEvent --|> DomainEvent
+RawMaterialLowStockEvent --|> DomainEvent
+
+Laboratory --> LabId
+Laboratory --> Regulation
+StaffMember --> StaffId
+StaffMember --> LabId
+PharmaceuticalProduct --> ProductId
+PharmaceuticalProduct --> LabId
+RawMaterial --> RawMaterialId
+RawMaterial --> LabId
+RawMaterial --> Quantity
+
+RegisterLaboratoryCommandHandler --> LaboratoryRepository
+UpdateLaboratoryCommandHandler --> LaboratoryRepository
+RegisterStaffCommandHandler --> StaffRepository
+DeactivateStaffCommandHandler --> StaffRepository
+RegisterProductCommandHandler --> ProductRepository
+RegisterRawMaterialCommandHandler --> RawMaterialRepository
+GetLaboratoryQueryHandler --> LaboratoryRepository
+GetStaffQueryHandler --> StaffRepository
+GetRawMaterialsQueryHandler --> RawMaterialRepository
+
+LaboratoryController --> GetLaboratoryQueryHandler
+LaboratoryController --> RegisterLaboratoryCommandHandler
+LaboratoryController --> UpdateLaboratoryCommandHandler
+StaffController --> GetStaffQueryHandler
+StaffController --> RegisterStaffCommandHandler
+StaffController --> DeactivateStaffCommandHandler
+ProductController --> RegisterProductCommandHandler
+RawMaterialController --> GetRawMaterialsQueryHandler
+RawMaterialController --> RegisterRawMaterialCommandHandler
+
+@enduml

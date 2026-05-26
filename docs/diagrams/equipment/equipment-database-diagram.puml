@@ -1,0 +1,77 @@
+@startuml equipment-database-diagram
+title QualiTrack – Equipment Management Database
+
+hide methods
+hide stereotypes
+
+entity "equipment" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  lab_id : VARCHAR(36) FK NOT NULL
+  name : VARCHAR(150) NOT NULL
+  type : ENUM('AUTOCLAVE','PH_METER','THERMOMETER',
+    'PRESSURE_SENSOR','CENTRIFUGE',
+    'SPECTROPHOTOMETER') NOT NULL
+  device_id : VARCHAR(100) UNIQUE
+  status : ENUM('ACTIVE','INACTIVE',
+    'UNDER_MAINTENANCE',
+    'PENDING_CALIBRATION') DEFAULT 'ACTIVE'
+  last_calibration_date : DATE
+  next_calibration_date : DATE
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME
+  created_by : VARCHAR(36)
+}
+
+entity "bpm_parameter_configs" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  equipment_id : VARCHAR(36) FK NOT NULL
+  variable : ENUM('TEMPERATURE','PRESSURE','PH',
+    'HUMIDITY','FLOW_RATE') NOT NULL
+  min_value : DECIMAL(10,4) NOT NULL
+  max_value : DECIMAL(10,4) NOT NULL
+  unit : VARCHAR(20) NOT NULL
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME
+  updated_by : VARCHAR(36)
+}
+
+entity "maintenance_records" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  equipment_id : VARCHAR(36) FK NOT NULL
+  maintenance_type : ENUM('PREVENTIVE',
+    'CORRECTIVE','CALIBRATION') NOT NULL
+  date : DATE NOT NULL
+  technician : VARCHAR(150) NOT NULL
+  observations : TEXT
+  created_at : DATETIME NOT NULL
+  created_by : VARCHAR(36) NOT NULL
+}
+
+equipment ||--o{ bpm_parameter_configs : "configura"
+equipment ||--o{ maintenance_records : "registra"
+
+note right of equipment
+  Índices:
+  - IDX_equipment_lab_id (lab_id)
+  - IDX_equipment_device_id (device_id)
+  - IDX_equipment_status (status)
+  - IDX_equipment_calibration (next_calibration_date)
+end note
+
+note right of bpm_parameter_configs
+  UNIQUE: (equipment_id, variable)
+  Permite un solo rango por variable
+  por equipo.
+end note
+
+note right of maintenance_records
+  Índices:
+  - IDX_maintenance_equipment_id (equipment_id)
+  - IDX_maintenance_date (date)
+  - IDX_maintenance_type (maintenance_type)
+end note
+
+@enduml

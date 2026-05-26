@@ -1,0 +1,245 @@
+@startuml shared-backend-diagram
+title QualiTrack – Shared Backend
+
+package "domain.base" {
+
+  abstract class AuditableEntity {
+    #id: String
+    #createdAt: LocalDateTime
+    #updatedAt: LocalDateTime
+    #createdBy: String
+    +prePersist(): void
+    +preUpdate(): void
+  }
+
+  abstract class DomainEvent {
+    #eventId: String
+    #occurredOn: LocalDateTime
+    +DomainEvent()
+    +getEventId(): String
+    +getOccurredOn(): LocalDateTime
+  }
+
+  abstract class AggregateRoot {
+    -domainEvents: List<DomainEvent>
+    +registerEvent(event: DomainEvent): void
+    +pullDomainEvents(): List<DomainEvent>
+    +clearDomainEvents(): void
+  }
+}
+
+package "domain.valueobjects" {
+
+  class LabId {
+    -value: String
+    +LabId(value: String)
+    +of(value: String): LabId
+    +getValue(): String
+    +toString(): String
+    +equals(other: Object): boolean
+    +hashCode(): int
+  }
+
+  class UserId {
+    -value: String
+    +UserId(value: String)
+    +of(value: String): UserId
+    +getValue(): String
+    +toString(): String
+    +equals(other: Object): boolean
+    +hashCode(): int
+  }
+
+  class BatchId {
+    -value: String
+    +BatchId(value: String)
+    +of(value: String): BatchId
+    +getValue(): String
+    +toString(): String
+    +equals(other: Object): boolean
+    +hashCode(): int
+  }
+
+  class EquipmentId {
+    -value: String
+    +EquipmentId(value: String)
+    +of(value: String): EquipmentId
+    +getValue(): String
+    +toString(): String
+    +equals(other: Object): boolean
+    +hashCode(): int
+  }
+
+  class MeasurementId {
+    -value: String
+    +MeasurementId(value: String)
+    +of(value: String): MeasurementId
+    +getValue(): String
+    +toString(): String
+  }
+
+  class DateRange {
+    -from: LocalDateTime
+    -to: LocalDateTime
+    +DateRange(from: LocalDateTime, to: LocalDateTime)
+    +of(from: LocalDateTime, to: LocalDateTime): DateRange
+    +getFrom(): LocalDateTime
+    +getTo(): LocalDateTime
+    +contains(timestamp: LocalDateTime): boolean
+    +isValid(): boolean
+    +getDurationDays(): long
+  }
+
+  class Quantity {
+    -value: double
+    -unit: String
+    +Quantity(value: double, unit: String)
+    +of(value: double, unit: String): Quantity
+    +getValue(): double
+    +getUnit(): String
+    +add(other: Quantity): Quantity
+    +subtract(other: Quantity): Quantity
+    +isGreaterThan(other: Quantity): boolean
+    +isZero(): boolean
+  }
+
+  class Email {
+    -value: String
+    +Email(value: String)
+    +of(value: String): Email
+    +getValue(): String
+    +isValid(): boolean
+    +toString(): String
+  }
+
+  class Money {
+    -amount: BigDecimal
+    -currency: String
+    +Money(amount: BigDecimal, currency: String)
+    +of(amount: BigDecimal, currency: String): Money
+    +add(other: Money): Money
+    +subtract(other: Money): Money
+    +isPositive(): boolean
+  }
+}
+
+package "infrastructure" {
+
+  interface DomainEventPublisher {
+    +publish(event: DomainEvent): void
+    +publishAll(events: List<DomainEvent>): void
+  }
+
+  class SpringDomainEventPublisher {
+    -applicationEventPublisher: ApplicationEventPublisher
+    +publish(event: DomainEvent): void
+    +publishAll(events: List<DomainEvent>): void
+  }
+
+  class GlobalExceptionHandler {
+    +handleValidationException(ex: MethodArgumentNotValidException): ResponseEntity<ErrorResponse>
+    +handleEntityNotFoundException(ex: EntityNotFoundException): ResponseEntity<ErrorResponse>
+    +handleBusinessRuleViolation(ex: BusinessRuleViolationException): ResponseEntity<ErrorResponse>
+    +handleGenericException(ex: Exception): ResponseEntity<ErrorResponse>
+  }
+
+  class ErrorResponse {
+    +status: int
+    +message: String
+    +errors: List<String>
+    +timestamp: LocalDateTime
+    +path: String
+  }
+
+  class JwtAuthenticationFilter {
+    -jwtService: JwtService
+    +doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain): void
+    +extractToken(request: HttpServletRequest): String
+  }
+
+  class SecurityConfig {
+    -jwtFilter: JwtAuthenticationFilter
+    +securityFilterChain(http: HttpSecurity): SecurityFilterChain
+    +corsConfigurationSource(): CorsConfigurationSource
+  }
+
+  class AuditAspect {
+    -auditLogRepository: AuditLogRepository
+    +logUserAction(joinPoint: ProceedingJoinPoint): Object
+  }
+
+  interface AuditLogRepository {
+    +save(entry: AuditLogEntry): AuditLogEntry
+    +findByLabId(labId: LabId): List<AuditLogEntry>
+  }
+}
+
+package "application.exceptions" {
+
+  class BusinessRuleViolationException {
+    -message: String
+    -errorCode: String
+    +BusinessRuleViolationException(message: String, errorCode: String)
+  }
+
+  class EntityNotFoundException {
+    -entityName: String
+    -entityId: String
+    +EntityNotFoundException(entityName: String, entityId: String)
+  }
+
+  class DeviceNotBoundException {
+    -deviceId: String
+    +DeviceNotBoundException(deviceId: String)
+  }
+
+  class InvalidStatusTransitionException {
+    -currentStatus: String
+    -targetStatus: String
+    +InvalidStatusTransitionException(current: String, target: String)
+  }
+
+  class DuplicateEntityException {
+    -entityName: String
+    -duplicateField: String
+    +DuplicateEntityException(entityName: String, field: String)
+  }
+}
+
+package "application.config" {
+
+  class TenantContext {
+    -tenantId: ThreadLocal<String>
+    +setCurrentTenant(tenantId: String): void
+    +getCurrentTenant(): String
+    +clear(): void
+  }
+
+  class SharedConfiguration {
+    -defaultBpmThresholds: Map<String, Double>
+    -maxCalibrationAlertDays: int
+    -minStockAlertEnabled: boolean
+    +getDefaultBpmThreshold(variable: String): double
+    +getMaxCalibrationAlertDays(): int
+  }
+}
+
+AggregateRoot --|> AuditableEntity
+SpringDomainEventPublisher ..|> DomainEventPublisher
+
+BusinessRuleViolationException --|> RuntimeException
+EntityNotFoundException --|> RuntimeException
+DeviceNotBoundException --|> RuntimeException
+InvalidStatusTransitionException --|> RuntimeException
+DuplicateEntityException --|> RuntimeException
+
+GlobalExceptionHandler --> ErrorResponse
+JwtAuthenticationFilter --> SecurityConfig
+AuditAspect --> AuditLogRepository
+SpringDomainEventPublisher --> DomainEvent
+
+LabId --> AuditableEntity : used by
+UserId --> AuditableEntity : used by
+DateRange --> AuditableEntity : used by
+
+@enduml

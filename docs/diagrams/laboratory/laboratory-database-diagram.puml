@@ -1,0 +1,97 @@
+@startuml laboratory-database-diagram
+title QualiTrack – Laboratory Management Database
+
+hide methods
+hide stereotypes
+
+entity "laboratories" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  name : VARCHAR(150) NOT NULL
+  ruc : VARCHAR(20) NOT NULL UNIQUE
+  address : VARCHAR(255)
+  phone : VARCHAR(20)
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME
+  created_by : VARCHAR(36)
+}
+
+entity "laboratory_regulations" {
+  * <u>lab_id</u> : VARCHAR(36) FK
+  * <u>regulation</u> : ENUM('BPM_DIGEMID','ISO_9001','ISO_13485','GMP_WHO')
+}
+
+entity "staff_members" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  lab_id : VARCHAR(36) FK NOT NULL
+  full_name : VARCHAR(150) NOT NULL
+  role : VARCHAR(50) NOT NULL
+  email : VARCHAR(150) NOT NULL UNIQUE
+  active : BOOLEAN DEFAULT TRUE
+  deactivated_at : DATETIME
+  deactivated_by : VARCHAR(36)
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME
+  created_by : VARCHAR(36)
+}
+
+entity "pharmaceutical_products" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  lab_id : VARCHAR(36) FK NOT NULL
+  code : VARCHAR(50) NOT NULL
+  name : VARCHAR(150) NOT NULL
+  description : TEXT
+  specifications : TEXT
+  active : BOOLEAN DEFAULT TRUE
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME
+  created_by : VARCHAR(36)
+}
+
+entity "raw_materials" {
+  * <u>id</u> : VARCHAR(36)
+  --
+  lab_id : VARCHAR(36) FK NOT NULL
+  name : VARCHAR(150) NOT NULL
+  code : VARCHAR(50) NOT NULL
+  supplier : VARCHAR(150) NOT NULL
+  batch_number : VARCHAR(50) NOT NULL
+  expiration_date : DATE NOT NULL
+  quantity_in_stock : DECIMAL(10,3) NOT NULL
+  unit : VARCHAR(20) NOT NULL
+  minimum_stock : DECIMAL(10,3) NOT NULL DEFAULT 0
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME
+  created_by : VARCHAR(36)
+}
+
+laboratories ||--o{ laboratory_regulations : "aplica"
+laboratories ||--o{ staff_members : "registra"
+laboratories ||--o{ pharmaceutical_products : "cataloga"
+laboratories ||--o{ raw_materials : "gestiona"
+
+note right of pharmaceutical_products
+  UNIQUE: (code, lab_id)
+  Índices:
+  - IDX_products_lab_id (lab_id)
+  - IDX_products_code (code)
+  - IDX_products_active (active)
+end note
+
+note right of raw_materials
+  UNIQUE: (code, lab_id)
+  Índices:
+  - IDX_materials_lab_id (lab_id)
+  - IDX_materials_expiration (expiration_date)
+end note
+
+note right of staff_members
+  Índices:
+  - IDX_staff_lab_id (lab_id)
+  - IDX_staff_email (email)
+  - IDX_staff_active (active)
+end note
+
+@enduml

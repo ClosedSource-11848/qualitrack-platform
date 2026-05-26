@@ -1,0 +1,305 @@
+@startuml batch-backend-diagram
+title QualiTrack – Batch Management Backend
+
+package "domain" {
+
+  abstract class AuditableEntity {
+    +createdAt: LocalDateTime
+    +updatedAt: LocalDateTime
+    +createdBy: String
+  }
+
+  class Batch {
+    -id: BatchId
+    -labId: LabId
+    -batchCode: String
+    -productId: ProductId
+    -equipmentId: EquipmentId
+    -status: BatchStatus
+    -startDate: LocalDate
+    -endDate: LocalDate
+    -rawMaterialUsages: List<RawMaterialUsage>
+    -digitalSignature: DigitalSignature
+    -rejectionRecord: RejectionRecord
+    +create(labId: LabId, batchCode: String, productId: ProductId, equipmentId: EquipmentId): Batch
+    +linkRawMaterial(usage: RawMaterialUsage): void
+    +block(reason: String): void
+    +release(signature: DigitalSignature): void
+    +reject(record: RejectionRecord): void
+    +complete(): void
+    +canBeReleased(): boolean
+    +canBeRejected(): boolean
+    +isBlocked(): boolean
+  }
+
+  class RawMaterialUsage {
+    -materialId: RawMaterialId
+    -materialName: String
+    -supplier: String
+    -batchNumber: String
+    -quantityUsed: Quantity
+    +of(materialId: RawMaterialId, quantityUsed: Quantity): RawMaterialUsage
+  }
+
+  class DigitalSignature {
+    -qaManagerId: UserId
+    -qaManagerName: String
+    -signedAt: LocalDateTime
+    -observations: String
+    +sign(qaManagerId: UserId, qaManagerName: String): DigitalSignature
+    +isValid(): boolean
+  }
+
+  class RejectionRecord {
+    -rejectedBy: UserId
+    -rejectedByName: String
+    -rootCause: String
+    -correctiveAction: String
+    -rejectedAt: LocalDateTime
+    +record(rejectedBy: UserId, rootCause: String): RejectionRecord
+  }
+
+  class BatchDomainService {
+    +validateBatchCodeUniqueness(batchCode: String, labId: LabId, repository: BatchRepository): void
+    +ensureRawMaterialsTraced(batch: Batch): void
+    +canTransitionTo(batch: Batch, targetStatus: BatchStatus): boolean
+  }
+
+  enum BatchStatus {
+    IN_PROCESS
+    BLOCKED
+    UNDER_INVESTIGATION
+    RELEASED
+    REJECTED
+    COMPLETED
+  }
+}
+
+package "domain.valueobjects" {
+
+  class BatchId {
+    -value: String
+    +of(value: String): BatchId
+    +toString(): String
+  }
+
+  class LabId {
+    -value: String
+    +of(value: String): LabId
+    +toString(): String
+  }
+
+  class ProductId {
+    -value: String
+    +of(value: String): ProductId
+    +toString(): String
+  }
+
+  class EquipmentId {
+    -value: String
+    +of(value: String): EquipmentId
+    +toString(): String
+  }
+
+  class RawMaterialId {
+    -value: String
+    +of(value: String): RawMaterialId
+    +toString(): String
+  }
+
+  class UserId {
+    -value: String
+    +of(value: String): UserId
+    +toString(): String
+  }
+
+  class Quantity {
+    -value: double
+    -unit: String
+    +of(value: double, unit: String): Quantity
+    +isGreaterThan(other: Quantity): boolean
+  }
+}
+
+package "domain.events" {
+
+  abstract class DomainEvent {
+    +occurredOn: LocalDateTime
+    +eventId: String
+  }
+
+  class BatchCreatedEvent {
+    +batchId: BatchId
+    +labId: LabId
+    +batchCode: String
+    +productId: ProductId
+    +createdAt: LocalDateTime
+  }
+
+  class BatchBlockedEvent {
+    +batchId: BatchId
+    +labId: LabId
+    +reason: String
+    +blockedAt: LocalDateTime
+  }
+
+  class BatchReleasedEvent {
+    +batchId: BatchId
+    +labId: LabId
+    +releasedBy: UserId
+    +releasedAt: LocalDateTime
+  }
+
+  class BatchRejectedEvent {
+    +batchId: BatchId
+    +labId: LabId
+    +rejectedBy: UserId
+    +rootCause: String
+    +rejectedAt: LocalDateTime
+  }
+}
+
+package "domain.repositories" {
+
+  interface BatchRepository {
+    +findById(id: BatchId): Optional<Batch>
+    +findByLabId(labId: LabId): List<Batch>
+    +findByLabIdAndStatus(labId: LabId, status: BatchStatus): List<Batch>
+    +findByProductId(productId: ProductId): List<Batch>
+    +findByEquipmentId(equipmentId: EquipmentId): List<Batch>
+    +findByBatchCode(batchCode: String, labId: LabId): Optional<Batch>
+    +save(batch: Batch): Batch
+    +existsByBatchCode(batchCode: String, labId: LabId): boolean
+  }
+}
+
+package "application" {
+
+  class CreateBatchCommandHandler {
+    -batchRepository: BatchRepository
+    -batchDomainService: BatchDomainService
+    -eventPublisher: DomainEventPublisher
+    +handle(command: CreateBatchCommand): BatchId
+  }
+
+  class BlockBatchCommandHandler {
+    -batchRepository: BatchRepository
+    -eventPublisher: DomainEventPublisher
+    +handle(command: BlockBatchCommand): void
+  }
+
+  class ReleaseBatchCommandHandler {
+    -batchRepository: BatchRepository
+    -batchDomainService: BatchDomainService
+    -eventPublisher: DomainEventPublisher
+    +handle(command: ReleaseBatchCommand): void
+  }
+
+  class RejectBatchCommandHandler {
+    -batchRepository: BatchRepository
+    -eventPublisher: DomainEventPublisher
+    +handle(command: RejectBatchCommand): void
+  }
+
+  class LinkRawMaterialCommandHandler {
+    -batchRepository: BatchRepository
+    +handle(command: LinkRawMaterialCommand): void
+  }
+
+  class GetBatchesQueryHandler {
+    -batchRepository: BatchRepository
+    +handle(query: GetBatchesQuery): List<BatchResource>
+  }
+
+  class GetBatchDetailQueryHandler {
+    -batchRepository: BatchRepository
+    +handle(query: GetBatchDetailQuery): BatchResource
+  }
+
+  class BatchBlockedEventListener {
+    -blockBatchHandler: BlockBatchCommandHandler
+    +onBatchBlockedByCompliance(event: BatchBlockedByComplianceEvent): void
+  }
+
+  interface DomainEventPublisher {
+    +publish(event: DomainEvent): void
+  }
+}
+
+package "interfaces" {
+
+  class BatchController {
+    -getBatchesHandler: GetBatchesQueryHandler
+    -getBatchDetailHandler: GetBatchDetailQueryHandler
+    -createBatchHandler: CreateBatchCommandHandler
+    -releaseBatchHandler: ReleaseBatchCommandHandler
+    -rejectBatchHandler: RejectBatchCommandHandler
+    -linkMaterialHandler: LinkRawMaterialCommandHandler
+    +getBatches(labId: String, status: String, productId: String, from: String, to: String): ResponseEntity<List<BatchResource>>
+    +getBatchById(labId: String, batchId: String): ResponseEntity<BatchResource>
+    +createBatch(labId: String, request: CreateBatchRequest): ResponseEntity<BatchResource>
+    +releaseBatch(labId: String, batchId: String, request: ReleaseBatchRequest): ResponseEntity<Void>
+    +rejectBatch(labId: String, batchId: String, request: RejectBatchRequest): ResponseEntity<Void>
+    +linkRawMaterial(batchId: String, request: LinkRawMaterialRequest): ResponseEntity<Void>
+  }
+
+  class BatchResource {
+    +id: String
+    +labId: String
+    +batchCode: String
+    +productId: String
+    +productName: String
+    +equipmentId: String
+    +status: String
+    +startDate: String
+    +endDate: String
+    +releasedBy: String
+    +releasedAt: String
+    +rejectionReason: String
+    +rawMaterialUsages: List<RawMaterialUsageResource>
+  }
+}
+
+Batch --|> AuditableEntity
+
+BatchCreatedEvent --|> DomainEvent
+BatchBlockedEvent --|> DomainEvent
+BatchReleasedEvent --|> DomainEvent
+BatchRejectedEvent --|> DomainEvent
+
+Batch --> BatchId
+Batch --> LabId
+Batch --> ProductId
+Batch --> EquipmentId
+Batch --> BatchStatus
+Batch --> RawMaterialUsage
+Batch --> DigitalSignature
+Batch --> RejectionRecord
+RawMaterialUsage --> RawMaterialId
+RawMaterialUsage --> Quantity
+DigitalSignature --> UserId
+RejectionRecord --> UserId
+
+CreateBatchCommandHandler --> BatchRepository
+CreateBatchCommandHandler --> BatchDomainService
+CreateBatchCommandHandler --> DomainEventPublisher
+BlockBatchCommandHandler --> BatchRepository
+BlockBatchCommandHandler --> DomainEventPublisher
+ReleaseBatchCommandHandler --> BatchRepository
+ReleaseBatchCommandHandler --> BatchDomainService
+ReleaseBatchCommandHandler --> DomainEventPublisher
+RejectBatchCommandHandler --> BatchRepository
+RejectBatchCommandHandler --> DomainEventPublisher
+LinkRawMaterialCommandHandler --> BatchRepository
+GetBatchesQueryHandler --> BatchRepository
+GetBatchDetailQueryHandler --> BatchRepository
+BatchBlockedEventListener --> BlockBatchCommandHandler
+
+BatchController --> GetBatchesQueryHandler
+BatchController --> GetBatchDetailQueryHandler
+BatchController --> CreateBatchCommandHandler
+BatchController --> ReleaseBatchCommandHandler
+BatchController --> RejectBatchCommandHandler
+BatchController --> LinkRawMaterialCommandHandler
+
+@enduml
