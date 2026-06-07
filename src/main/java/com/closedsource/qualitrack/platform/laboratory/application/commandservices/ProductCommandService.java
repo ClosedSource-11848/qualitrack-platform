@@ -16,5 +16,5 @@ public interface ProductCommandService {
      * @return created product identifier (domain ID) or an application error
      * @see CreateProductCommand
      */
-    Result<String, ApplicationError> handle(CreateProductCommand command);
+    Result<Long, ApplicationError> handle(CreateProductCommand command);
 }

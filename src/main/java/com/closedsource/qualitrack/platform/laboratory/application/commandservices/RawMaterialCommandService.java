@@ -16,5 +16,5 @@ public interface RawMaterialCommandService {
      * @return created raw material identifier (domain ID) or an application error
      * @see CreateRawMaterialCommand
      */
-    Result<String, ApplicationError> handle(CreateRawMaterialCommand command);
+    Result<Long, ApplicationError> handle(CreateRawMaterialCommand command);
 }

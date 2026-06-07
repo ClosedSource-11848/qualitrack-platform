@@ -17,7 +17,7 @@ public interface StaffCommandService {
      * @return created staff member identifier (domain ID) or an application error
      * @see RegisterStaffCommand
      */
-    Result<String, ApplicationError> handle(RegisterStaffCommand command);
+    Result<Long, ApplicationError> handle(RegisterStaffCommand command);
 
     /**
      * Handles the deactivation of an existing staff member.
@@ -26,5 +26,5 @@ public interface StaffCommandService {
      * @return deactivated staff member identifier or an application error
      * @see DeactivateStaffCommand
      */
-    Result<String, ApplicationError> handle(DeactivateStaffCommand command);
+    Result<Long, ApplicationError> handle(DeactivateStaffCommand command);
 }

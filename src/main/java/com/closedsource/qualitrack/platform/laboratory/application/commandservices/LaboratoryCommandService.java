@@ -7,25 +7,12 @@ import com.closedsource.qualitrack.platform.shared.application.result.Applicatio
 import com.closedsource.qualitrack.platform.shared.application.result.Result;
 
 /**
- * Application service contract for commands over the {@link Laboratory} aggregate.
+ * Service interface for handling laboratory-related commands.
  */
 public interface LaboratoryCommandService {
 
-    /**
-     * Handles laboratory creation.
-     *
-     * @param command command containing initial laboratory data
-     * @return created laboratory identifier (domain ID) or an application error
-     * @see CreateLaboratoryCommand
-     */
-    Result<String, ApplicationError> handle(CreateLaboratoryCommand command);
+    // Cambiado a Long para reflejar el ID nativo autogenerado
+    Result<Long, ApplicationError> handle(CreateLaboratoryCommand command);
 
-    /**
-     * Handles laboratory profile update.
-     *
-     * @param command command containing target laboratory id and new data
-     * @return updated laboratory aggregate or an application error
-     * @see UpdateLaboratoryCommand
-     */
     Result<Laboratory, ApplicationError> handle(UpdateLaboratoryCommand command);
 }
