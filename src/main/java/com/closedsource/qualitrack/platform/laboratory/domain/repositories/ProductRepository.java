@@ -9,17 +9,19 @@ import java.util.Optional;
  * Pharmaceutical product repository port.
  */
 public interface ProductRepository {
-    Optional<PharmaceuticalProduct> findById(String id);
+    Optional<PharmaceuticalProduct> findById(Long id);
 
     List<PharmaceuticalProduct> findAll();
 
-    List<PharmaceuticalProduct> findAllByLaboratoryId(String laboratoryId);
+    List<PharmaceuticalProduct> findAllByLaboratoryId(Long laboratoryId);
 
-    Optional<PharmaceuticalProduct> findByNameAndLaboratoryId(String name, String laboratoryId);
+    Optional<PharmaceuticalProduct> findByNameAndLaboratoryId(String name, Long laboratoryId);
 
     PharmaceuticalProduct save(PharmaceuticalProduct product);
 
-    boolean existsById(String id);
+    boolean existsById(Long id);
 
-    void deleteById(String id);
+    boolean existsByCode(String code);
+
+    void deleteById(Long id);
 }
