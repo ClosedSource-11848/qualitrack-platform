@@ -1,0 +1,47 @@
+package com.closedsource.qualitrack.platform.equipment.application.internal.commandservices;
+
+import com.closedsource.qualitrack.platform.equipment.application.commandservices.MaintenanceCommandService;
+import com.closedsource.qualitrack.platform.equipment.domain.model.aggregates.MaintenanceRecord;
+import com.closedsource.qualitrack.platform.equipment.domain.model.commands.RegisterMaintenanceCommand;
+import com.closedsource.qualitrack.platform.equipment.domain.repositories.EquipmentRepository;
+import com.closedsource.qualitrack.platform.equipment.domain.repositories.MaintenanceRepository;
+import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
+import com.closedsource.qualitrack.platform.shared.application.result.Result;
+import org.springframework.stereotype.Service;
+
+/**
+ * Application service implementation that executes maintenance commands.
+ */
+@Service
+public class MaintenanceCommandServiceImpl implements MaintenanceCommandService {
+
+    private final MaintenanceRepository maintenanceRepository;
+    private final EquipmentRepository equipmentRepository;
+
+    public MaintenanceCommandServiceImpl(MaintenanceRepository maintenanceRepository, EquipmentRepository equipmentRepository) {
+        this.maintenanceRepository = maintenanceRepository;
+        this.equipmentRepository = equipmentRepository;
+    }
+
+    @Override
+    public Result<Long, ApplicationError> handle(RegisterMaintenanceCommand command) {
+        if (!equipmentRepository.existsById(command.equipmentId())) {
+            return Result.failure(ApplicationError.notFound(
+                    "Equipment",
+                    String.valueOf(command.equipmentId())
+            ));
+        }
+
+        try {
+            var maintenanceRecord = new MaintenanceRecord(command);
+            var savedRecord = maintenanceRepository.save(maintenanceRecord);
+
+            return Result.success(savedRecord.getId());
+
+        } catch (IllegalArgumentException e) {
+            return Result.failure(ApplicationError.validationError("MaintenanceRecord", e.getMessage()));
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unexpected("register-maintenance", e.getMessage()));
+        }
+    }
+}
