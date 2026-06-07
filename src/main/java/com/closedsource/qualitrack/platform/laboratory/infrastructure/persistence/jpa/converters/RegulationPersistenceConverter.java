@@ -5,9 +5,10 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
 /**
- * Converts Regulation value objects between the domain model and persistence column values.
+ * Converts the {@link Regulation} value object between the domain model
+ * and its persistence column value (String).
  */
-@Converter(autoApply = false)
+@Converter(autoApply = true)
 public class RegulationPersistenceConverter implements AttributeConverter<Regulation, String> {
 
     @Override

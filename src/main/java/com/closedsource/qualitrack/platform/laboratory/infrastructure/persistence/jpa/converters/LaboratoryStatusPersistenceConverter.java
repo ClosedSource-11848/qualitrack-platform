@@ -5,9 +5,10 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
 /**
- * Converts LaboratoryStatus enum between the domain model and persistence column values.
+ * Converts the {@link LaboratoryStatus} enum between its domain representation
+ * and the persistence column value (String).
  */
-@Converter(autoApply = false)
+@Converter(autoApply = true)
 public class LaboratoryStatusPersistenceConverter implements AttributeConverter<LaboratoryStatus, String> {
 
     @Override

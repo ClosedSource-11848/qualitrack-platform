@@ -3,33 +3,43 @@ package com.closedsource.qualitrack.platform.laboratory.infrastructure.persisten
 import com.closedsource.qualitrack.platform.laboratory.domain.model.aggregates.StaffMember;
 import com.closedsource.qualitrack.platform.laboratory.infrastructure.persistence.jpa.entities.StaffPersistenceEntity;
 
+/**
+ * Static assembler between staff member domain and persistence representations.
+ */
 public final class StaffPersistenceAssembler {
 
-    private StaffPersistenceAssembler() {}
+    private StaffPersistenceAssembler() {
+    }
 
     public static StaffMember toDomainFromPersistence(StaffPersistenceEntity entity) {
         if (entity == null) return null;
 
         return new StaffMember(
-                entity.getDomainId(),
+                entity.getId(),
                 entity.getLaboratoryId(),
-                entity.getFirstName(),
-                entity.getLastName(),
+                entity.getFullName(),
                 entity.getRole(),
+                entity.getEmail(),
                 entity.isActive()
         );
     }
 
-    public static StaffPersistenceEntity toPersistenceFromDomain(StaffMember domain) {
-        if (domain == null) return null;
+    public static StaffPersistenceEntity toPersistenceFromDomain(StaffMember staffMember) {
+        if (staffMember == null) return null;
 
         var entity = new StaffPersistenceEntity();
-        entity.setDomainId(domain.getId());
-        entity.setLaboratoryId(domain.getLaboratoryId());
-        entity.setFirstName(domain.getFirstName());
-        entity.setLastName(domain.getLastName());
-        entity.setRole(domain.getRole());
-        entity.setActive(domain.isActive());
+
+        // Only set ID if the staff member is being updated (has a non-null ID)
+        // For new staff members, leave ID null to allow JPA to generate it
+        if (staffMember.getId() != null) {
+            entity.setId(staffMember.getId());
+        }
+
+        entity.setLaboratoryId(staffMember.getLaboratoryId());
+        entity.setFullName(staffMember.getFullName());
+        entity.setRole(staffMember.getRole());
+        entity.setEmail(staffMember.getEmail());
+        entity.setActive(staffMember.isActive());
 
         return entity;
     }
