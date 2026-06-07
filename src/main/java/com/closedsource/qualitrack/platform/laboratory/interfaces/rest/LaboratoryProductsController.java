@@ -29,7 +29,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
  */
 @RestController
 @RequestMapping(value = "/api/v1/laboratories/{laboratoryId}/products", produces = APPLICATION_JSON_VALUE)
-@Tag(name = "Laboratory Products", description = "Laboratory pharmaceutical products catalog")
+@Tag(name = "Laboratories", description = "Laboratory management endpoints") // ¡Mismo tag que LaboratoryController!
 public class LaboratoryProductsController {
     private final ProductCommandService productCommandService;
     private final ProductQueryService productQueryService;
@@ -44,13 +44,21 @@ public class LaboratoryProductsController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Product created successfully", content = @Content(schema = @Schema(implementation = MessageResource.class))),
             @ApiResponse(responseCode = "404", description = "Laboratory not found"),
-            @ApiResponse(responseCode = "409", description = "Product name already exists")
+            @ApiResponse(responseCode = "409", description = "Product code or name already exists")
     })
     public ResponseEntity<?> createProduct(
-            @PathVariable @Parameter(description = "Laboratory identifier", required = true) String laboratoryId,
+            @PathVariable @Parameter(description = "Laboratory numeric identifier", example = "1", required = true) Long laboratoryId,
             @RequestBody CreateProductResource resource
     ) {
-        var command = new CreateProductCommand(laboratoryId, resource.name(), resource.description(), resource.activeIngredient());
+        // Tomamos el laboratoryId de la URL, y el resto de los datos del JSON
+        var command = new CreateProductCommand(
+                laboratoryId,
+                resource.code(),
+                resource.name(),
+                resource.description(),
+                resource.specifications()
+        );
+
         var result = productCommandService.handle(command)
                 .map(productId -> new MessageResource("Product created successfully with ID: " + productId));
 
@@ -63,7 +71,7 @@ public class LaboratoryProductsController {
             @ApiResponse(responseCode = "200", description = "Products retrieved successfully")
     })
     public ResponseEntity<List<PharmaceuticalProductResource>> getProductsByLaboratoryId(
-            @PathVariable @Parameter(description = "Laboratory identifier", required = true) String laboratoryId
+            @PathVariable @Parameter(description = "Laboratory numeric identifier", example = "1", required = true) Long laboratoryId
     ) {
         var products = productQueryService.handle(new GetProductsByLabIdQuery(laboratoryId));
         var resources = products.stream().map(ProductResourceFromEntityAssembler::toResourceFromEntity).toList();

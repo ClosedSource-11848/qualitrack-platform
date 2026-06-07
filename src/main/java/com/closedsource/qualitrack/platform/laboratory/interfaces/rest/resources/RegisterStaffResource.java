@@ -8,29 +8,38 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(
         name = "RegisterStaffRequest",
         description = "Request payload for registering a new staff member",
-        example = "{\"laboratoryId\": \"LAB-1234\", \"firstName\": \"Jane\", \"lastName\": \"Doe\", \"role\": \"Quality Inspector\"}"
+        example = "{\"laboratoryId\": 1, \"fullName\": \"Jane Doe\", \"role\": \"Quality Inspector\", \"email\": \"jane.doe@pharmacorp.com\"}"
 )
 public record RegisterStaffResource(
-        @Schema(description = "Target laboratory identifier", example = "LAB-1234")
-        String laboratoryId,
 
-        @Schema(description = "First name", example = "Jane", minLength = 1, maxLength = 50)
-        String firstName,
+        @Schema(description = "Target laboratory numeric identifier", example = "1")
+        Long laboratoryId,
 
-        @Schema(description = "Last name", example = "Doe", minLength = 1, maxLength = 50)
-        String lastName,
+        @Schema(description = "Full legal name", example = "Jane Doe", minLength = 1, maxLength = 100)
+        String fullName,
 
-        @Schema(description = "Operational role", example = "Quality Inspector", minLength = 1, maxLength = 50)
-        String role
+        @Schema(description = "Operational or professional role", example = "Quality Inspector", minLength = 1, maxLength = 50)
+        String role,
+
+        @Schema(description = "Corporate email address", example = "jane.doe@pharmacorp.com", minLength = 5, maxLength = 100)
+        String email
 ) {
     /**
-     * Validates the resource.
-     * @throws IllegalArgumentException if any field is null or blank.
+     * Validates the resource properties (Fail-Fast).
+     * @throws IllegalArgumentException if any field is missing or invalid.
      */
     public RegisterStaffResource {
-        if (laboratoryId == null || laboratoryId.isBlank()) throw new IllegalArgumentException("Laboratory ID is required");
-        if (firstName == null || firstName.isBlank()) throw new IllegalArgumentException("First name is required");
-        if (lastName == null || lastName.isBlank()) throw new IllegalArgumentException("Last name is required");
-        if (role == null || role.isBlank()) throw new IllegalArgumentException("Role is required");
+        if (laboratoryId == null || laboratoryId <= 0) {
+            throw new IllegalArgumentException("Laboratory ID is required and must be greater than zero");
+        }
+        if (fullName == null || fullName.isBlank()) {
+            throw new IllegalArgumentException("Full name is required");
+        }
+        if (role == null || role.isBlank()) {
+            throw new IllegalArgumentException("Role is required");
+        }
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email is required");
+        }
     }
 }

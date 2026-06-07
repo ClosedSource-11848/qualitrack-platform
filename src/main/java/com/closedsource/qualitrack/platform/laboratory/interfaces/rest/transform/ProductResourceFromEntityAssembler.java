@@ -7,6 +7,7 @@ import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources
  * Assembler to convert a PharmaceuticalProduct entity to a PharmaceuticalProductResource.
  */
 public class ProductResourceFromEntityAssembler {
+
     /**
      * Converts a PharmaceuticalProduct entity to a PharmaceuticalProductResource.
      *
@@ -17,9 +18,11 @@ public class ProductResourceFromEntityAssembler {
         return new PharmaceuticalProductResource(
                 entity.getId(),
                 entity.getLaboratoryId(),
+                entity.getCode(),
                 entity.getName(),
                 entity.getDescription(),
-                entity.getActiveIngredient()
+                entity.getSpecifications(),
+                entity.isActive()
         );
     }
 }

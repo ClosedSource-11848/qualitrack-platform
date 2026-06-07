@@ -7,6 +7,7 @@ import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources
  * Assembler to convert a RawMaterial entity to a RawMaterialResource.
  */
 public class RawMaterialResourceFromEntityAssembler {
+
     /**
      * Converts a RawMaterial entity to a RawMaterialResource.
      *
@@ -18,8 +19,13 @@ public class RawMaterialResourceFromEntityAssembler {
                 entity.getId(),
                 entity.getLaboratoryId(),
                 entity.getName(),
+                entity.getCode(),
+                entity.getSupplier(),
+                entity.getBatchNumber(),
+                entity.getExpirationDate(),
+                entity.getCurrentStock(),
                 entity.getUnit(),
-                entity.getCurrentStock()
+                entity.getMinimumThreshold()
         );
     }
 }

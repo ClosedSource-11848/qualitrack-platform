@@ -8,29 +8,68 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(
         name = "CreateRawMaterialRequest",
         description = "Request payload for registering a new raw material with initial stock",
-        example = "{\"laboratoryId\": \"LAB-1234\", \"name\": \"Distilled Water\", \"unit\": \"Liters\", \"initialStock\": 500}"
+        example = "{\"laboratoryId\": 1, \"name\": \"Distilled Water\", \"code\": \"RM-DW-001\", \"supplier\": \"AquaChem\", \"batchNumber\": \"B-202606\", \"expirationDate\": \"2027-06-06\", \"quantityInStock\": 500, \"unit\": \"Liters\", \"minimumStock\": 50}"
 )
 public record CreateRawMaterialResource(
-        @Schema(description = "Target laboratory identifier", example = "LAB-1234")
-        String laboratoryId,
 
-        @Schema(description = "Raw material name", example = "Distilled Water", minLength = 1, maxLength = 100)
+        @Schema(description = "Target laboratory numeric identifier", example = "1")
+        Long laboratoryId,
+
+        @Schema(description = "Raw material name", example = "Distilled Water", minLength = 1, maxLength = 150)
         String name,
+
+        @Schema(description = "Internal catalog code", example = "RM-DW-001", minLength = 1, maxLength = 50)
+        String code,
+
+        @Schema(description = "External supplier name", example = "AquaChem", minLength = 1, maxLength = 150)
+        String supplier,
+
+        @Schema(description = "Batch or lot number", example = "B-202606", minLength = 1, maxLength = 50)
+        String batchNumber,
+
+        @Schema(description = "Expiration date in ISO 8601 format", example = "2027-06-06", minLength = 10, maxLength = 20)
+        String expirationDate,
+
+        @Schema(description = "Initial stock quantity", example = "500", minimum = "0")
+        Integer quantityInStock,
 
         @Schema(description = "Measurement unit (e.g., Kg, Liters, Units)", example = "Liters", minLength = 1, maxLength = 20)
         String unit,
 
-        @Schema(description = "Initial stock quantity", example = "500", minimum = "0")
-        Integer initialStock
+        @Schema(description = "Minimum stock threshold to trigger alerts", example = "50", minimum = "0")
+        Integer minimumStock
 ) {
     /**
-     * Validates the resource.
+     * Validates the resource properties (Fail-Fast).
      * @throws IllegalArgumentException if required fields are missing or invalid.
      */
     public CreateRawMaterialResource {
-        if (laboratoryId == null || laboratoryId.isBlank()) throw new IllegalArgumentException("Laboratory ID is required");
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("Name is required");
-        if (unit == null || unit.isBlank()) throw new IllegalArgumentException("Unit is required");
-        if (initialStock == null || initialStock < 0) throw new IllegalArgumentException("Initial stock must be provided and cannot be negative");
+        if (laboratoryId == null || laboratoryId <= 0) {
+            throw new IllegalArgumentException("Laboratory ID is required and must be greater than zero");
+        }
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Name is required");
+        }
+        if (code == null || code.isBlank()) {
+            throw new IllegalArgumentException("Code is required");
+        }
+        if (supplier == null || supplier.isBlank()) {
+            throw new IllegalArgumentException("Supplier is required");
+        }
+        if (batchNumber == null || batchNumber.isBlank()) {
+            throw new IllegalArgumentException("Batch number is required");
+        }
+        if (expirationDate == null || expirationDate.isBlank()) {
+            throw new IllegalArgumentException("Expiration date is required");
+        }
+        if (quantityInStock == null || quantityInStock < 0) {
+            throw new IllegalArgumentException("Quantity in stock must be provided and cannot be negative");
+        }
+        if (unit == null || unit.isBlank()) {
+            throw new IllegalArgumentException("Unit is required");
+        }
+        if (minimumStock == null || minimumStock < 0) {
+            throw new IllegalArgumentException("Minimum stock must be provided and cannot be negative");
+        }
     }
 }
