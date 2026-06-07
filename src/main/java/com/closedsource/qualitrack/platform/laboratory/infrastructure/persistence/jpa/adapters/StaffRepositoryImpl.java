@@ -9,6 +9,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JPA adapter implementation for the {@link StaffRepository} port.
+ *
+ * <p>Translates domain-level requests for staff members into
+ * Spring Data JPA database operations using native numeric IDs.</p>
+ */
 @Repository
 public class StaffRepositoryImpl implements StaffRepository {
 
@@ -19,38 +25,48 @@ public class StaffRepositoryImpl implements StaffRepository {
     }
 
     @Override
-    public Optional<StaffMember> findById(String id) {
-        return repository.findByDomainId(id).map(StaffPersistenceAssembler::toDomainFromPersistence);
+    public Optional<StaffMember> findById(Long id) {
+        // Native JPA findById using the numeric ID
+        return repository.findById(id)
+                .map(StaffPersistenceAssembler::toDomainFromPersistence);
     }
 
     @Override
     public List<StaffMember> findAll() {
-        return repository.findAll().stream().map(StaffPersistenceAssembler::toDomainFromPersistence).toList();
+        return repository.findAll().stream()
+                .map(StaffPersistenceAssembler::toDomainFromPersistence)
+                .toList();
     }
 
     @Override
-    public List<StaffMember> findAllByLaboratoryId(String laboratoryId) {
+    public List<StaffMember> findAllByLaboratoryId(Long laboratoryId) {
         return repository.findAllByLaboratoryId(laboratoryId).stream()
-                .map(StaffPersistenceAssembler::toDomainFromPersistence).toList();
+                .map(StaffPersistenceAssembler::toDomainFromPersistence)
+                .toList();
     }
 
     @Override
     public StaffMember save(StaffMember staffMember) {
+
         var entityToSave = StaffPersistenceAssembler.toPersistenceFromDomain(staffMember);
-        repository.findByDomainId(staffMember.getId())
-                .ifPresent(existing -> entityToSave.setId(existing.getId()));
 
         var saved = repository.save(entityToSave);
+
         return StaffPersistenceAssembler.toDomainFromPersistence(saved);
     }
 
     @Override
-    public boolean existsById(String id) {
-        return repository.existsByDomainId(id);
+    public boolean existsById(Long id) {
+        return repository.existsById(id);
     }
 
     @Override
-    public void deleteById(String id) {
-        repository.findByDomainId(id).ifPresent(repository::delete);
+    public boolean existsByEmail(String email) {
+        return repository.existsByEmail(email);
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        repository.deleteById(id);
     }
 }

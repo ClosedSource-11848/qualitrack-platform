@@ -9,6 +9,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JPA adapter implementation for the {@link ProductRepository} port.
+ *
+ * <p>Translates domain-level requests for pharmaceutical products into
+ * Spring Data JPA database operations.</p>
+ */
 @Repository
 public class ProductRepositoryImpl implements ProductRepository {
 
@@ -19,23 +25,27 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
-    public Optional<PharmaceuticalProduct> findById(String id) {
-        return repository.findByDomainId(id).map(ProductPersistenceAssembler::toDomainFromPersistence);
+    public Optional<PharmaceuticalProduct> findById(Long id) {
+        return repository.findById(id)
+                .map(ProductPersistenceAssembler::toDomainFromPersistence);
     }
 
     @Override
     public List<PharmaceuticalProduct> findAll() {
-        return repository.findAll().stream().map(ProductPersistenceAssembler::toDomainFromPersistence).toList();
+        return repository.findAll().stream()
+                .map(ProductPersistenceAssembler::toDomainFromPersistence)
+                .toList();
     }
 
     @Override
-    public List<PharmaceuticalProduct> findAllByLaboratoryId(String laboratoryId) {
+    public List<PharmaceuticalProduct> findAllByLaboratoryId(Long laboratoryId) {
         return repository.findAllByLaboratoryId(laboratoryId).stream()
-                .map(ProductPersistenceAssembler::toDomainFromPersistence).toList();
+                .map(ProductPersistenceAssembler::toDomainFromPersistence)
+                .toList();
     }
 
     @Override
-    public Optional<PharmaceuticalProduct> findByNameAndLaboratoryId(String name, String laboratoryId) {
+    public Optional<PharmaceuticalProduct> findByNameAndLaboratoryId(String name, Long laboratoryId) {
         return repository.findByNameAndLaboratoryId(name, laboratoryId)
                 .map(ProductPersistenceAssembler::toDomainFromPersistence);
     }
@@ -43,20 +53,25 @@ public class ProductRepositoryImpl implements ProductRepository {
     @Override
     public PharmaceuticalProduct save(PharmaceuticalProduct product) {
         var entityToSave = ProductPersistenceAssembler.toPersistenceFromDomain(product);
-        repository.findByDomainId(product.getId())
-                .ifPresent(existing -> entityToSave.setId(existing.getId()));
 
         var saved = repository.save(entityToSave);
+
         return ProductPersistenceAssembler.toDomainFromPersistence(saved);
     }
 
     @Override
-    public boolean existsById(String id) {
-        return repository.existsByDomainId(id);
+    public boolean existsById(Long id) {
+        return repository.existsById(id);
+    }
+
+    // --- NUEVO MÉTODO AÑADIDO PARA CUMPLIR CON LA INTERFAZ ---
+    @Override
+    public boolean existsByCode(String code) {
+        return repository.existsByCode(code);
     }
 
     @Override
-    public void deleteById(String id) {
-        repository.findByDomainId(id).ifPresent(repository::delete);
+    public void deleteById(Long id) {
+        repository.deleteById(id);
     }
 }

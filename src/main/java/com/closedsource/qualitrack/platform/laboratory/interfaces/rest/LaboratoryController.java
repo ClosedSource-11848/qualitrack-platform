@@ -63,13 +63,13 @@ public class LaboratoryController {
     }
 
     @GetMapping("/{laboratoryId}")
-    @Operation(summary = "Get laboratory by ID", description = "Retrieves a specific laboratory by its unique identifier.")
+    @Operation(summary = "Get laboratory by ID", description = "Retrieves a specific laboratory by its numeric identifier.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Laboratory found", content = @Content(schema = @Schema(implementation = LaboratoryResource.class))),
             @ApiResponse(responseCode = "404", description = "Laboratory not found")
     })
     public ResponseEntity<LaboratoryResource> getLaboratoryById(
-            @PathVariable @Parameter(description = "Laboratory identifier", example = "LAB-1234", required = true) String laboratoryId
+            @PathVariable @Parameter(description = "Laboratory numeric identifier", example = "1", required = true) Long laboratoryId
     ) {
         var laboratory = laboratoryQueryService.handle(new GetLaboratoryByIdQuery(laboratoryId));
         if (laboratory.isEmpty()) return ResponseEntity.notFound().build();
@@ -83,7 +83,7 @@ public class LaboratoryController {
             @ApiResponse(responseCode = "404", description = "Laboratory not found")
     })
     public ResponseEntity<?> updateLaboratory(
-            @PathVariable @Parameter(description = "Laboratory identifier", required = true) String laboratoryId,
+            @PathVariable @Parameter(description = "Laboratory numeric identifier", example = "1", required = true) Long laboratoryId,
             @RequestBody UpdateLaboratoryResource resource
     ) {
         var command = UpdateLaboratoryCommandFromResourceAssembler.toCommandFromResource(laboratoryId, resource);

@@ -7,10 +7,11 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Laboratory repository port.
+ * Repository port for the Laboratory aggregate.
  */
 public interface LaboratoryRepository {
-    Optional<Laboratory> findById(String id);
+
+    Optional<Laboratory> findById(Long id);
 
     Optional<Laboratory> findByName(LaboratoryName name);
 
@@ -18,9 +19,11 @@ public interface LaboratoryRepository {
 
     Laboratory save(Laboratory laboratory);
 
-    boolean existsById(String id);
+    boolean existsById(Long id);
 
     boolean existsByName(LaboratoryName name);
 
-    void deleteById(String id);
+    boolean existsByRuc(String ruc);
+
+    void deleteById(Long id);
 }

@@ -7,6 +7,7 @@ import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources
  * Assembler to convert a CreateLaboratoryResource to a CreateLaboratoryCommand.
  */
 public class CreateLaboratoryCommandFromResourceAssembler {
+
     /**
      * Converts a CreateLaboratoryResource to a CreateLaboratoryCommand.
      *
@@ -16,10 +17,10 @@ public class CreateLaboratoryCommandFromResourceAssembler {
     public static CreateLaboratoryCommand toCommandFromResource(CreateLaboratoryResource resource) {
         return new CreateLaboratoryCommand(
                 resource.name(),
-                resource.regulationCode(),
-                resource.street(),
-                resource.city(),
-                resource.zipCode()
-        );
+                resource.ruc(),
+                resource.phone(),
+                resource.address(),
+                resource.applicableRegulations()
+                );
     }
 }

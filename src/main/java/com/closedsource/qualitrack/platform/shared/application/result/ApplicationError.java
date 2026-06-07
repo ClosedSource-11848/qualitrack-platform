@@ -44,6 +44,13 @@ public record ApplicationError(
     }
 
     /**
+     * Not found error: the requested resource does not exist (supports numeric/object identifiers)
+     */
+    public static ApplicationError notFound(String resourceType, Object identifier) {
+        return notFound(resourceType, String.valueOf(identifier));
+    }
+
+    /**
      * Business rule violation error: operation violates domain constraints
      */
     public static ApplicationError businessRuleViolation(String rule, String reason) {

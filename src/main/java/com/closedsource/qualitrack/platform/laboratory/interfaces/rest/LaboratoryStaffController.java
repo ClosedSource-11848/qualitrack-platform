@@ -2,7 +2,6 @@ package com.closedsource.qualitrack.platform.laboratory.interfaces.rest;
 
 import com.closedsource.qualitrack.platform.laboratory.application.commandservices.StaffCommandService;
 import com.closedsource.qualitrack.platform.laboratory.application.queryservices.StaffQueryService;
-import com.closedsource.qualitrack.platform.laboratory.domain.model.commands.DeactivateStaffCommand;
 import com.closedsource.qualitrack.platform.laboratory.domain.model.commands.RegisterStaffCommand;
 import com.closedsource.qualitrack.platform.laboratory.domain.model.queries.GetStaffByLabIdQuery;
 import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources.RegisterStaffResource;
@@ -30,7 +29,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
  */
 @RestController
 @RequestMapping(value = "/api/v1/laboratories/{laboratoryId}/staff", produces = APPLICATION_JSON_VALUE)
-@Tag(name = "Laboratory Staff", description = "Laboratory staff management endpoints")
+@Tag(name = "Laboratories", description = "Laboratory management endpoints")
 public class LaboratoryStaffController {
     private final StaffCommandService staffCommandService;
     private final StaffQueryService staffQueryService;
@@ -47,11 +46,16 @@ public class LaboratoryStaffController {
             @ApiResponse(responseCode = "404", description = "Laboratory not found")
     })
     public ResponseEntity<?> registerStaff(
-            @PathVariable @Parameter(description = "Laboratory identifier", required = true) String laboratoryId,
+            @PathVariable @Parameter(description = "Laboratory numeric identifier", example = "1", required = true) Long laboratoryId,
             @RequestBody RegisterStaffResource resource
     ) {
-        // Ignoramos el laboratoryId del body por seguridad y usamos el del PathVariable
-        var command = new RegisterStaffCommand(laboratoryId, resource.firstName(), resource.lastName(), resource.role());
+        var command = new RegisterStaffCommand(
+                laboratoryId,
+                resource.fullName(),
+                resource.email(),
+                resource.role()
+        );
+
         var result = staffCommandService.handle(command)
                 .map(staffId -> new MessageResource("Staff member registered successfully with ID: " + staffId));
 
@@ -64,28 +68,10 @@ public class LaboratoryStaffController {
             @ApiResponse(responseCode = "200", description = "Staff retrieved successfully")
     })
     public ResponseEntity<List<StaffMemberResource>> getStaffByLaboratoryId(
-            @PathVariable @Parameter(description = "Laboratory identifier", required = true) String laboratoryId
+            @PathVariable @Parameter(description = "Laboratory numeric identifier", example = "1", required = true) Long laboratoryId
     ) {
         var staff = staffQueryService.handle(new GetStaffByLabIdQuery(laboratoryId));
         var resources = staff.stream().map(StaffResourceFromEntityAssembler::toResourceFromEntity).toList();
         return ResponseEntity.ok(resources);
-    }
-
-    @PutMapping("/{staffId}/deactivation")
-    @Operation(summary = "Deactivate staff member", description = "Deactivates an employee's access to the laboratory.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Staff deactivated successfully"),
-            @ApiResponse(responseCode = "404", description = "Staff or laboratory not found"),
-            @ApiResponse(responseCode = "409", description = "Business rule violation")
-    })
-    public ResponseEntity<?> deactivateStaff(
-            @PathVariable @Parameter(description = "Laboratory identifier", required = true) String laboratoryId,
-            @PathVariable @Parameter(description = "Staff identifier", required = true) String staffId
-    ) {
-        var command = new DeactivateStaffCommand(staffId, laboratoryId);
-        var result = staffCommandService.handle(command)
-                .map(id -> new MessageResource("Staff member deactivated successfully"));
-
-        return ResponseEntityAssembler.toResponseEntityFromResult(result, message -> message, HttpStatus.OK);
     }
 }

@@ -7,6 +7,7 @@ import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources
  * Assembler to convert a StaffMember entity to a StaffMemberResource.
  */
 public class StaffResourceFromEntityAssembler {
+
     /**
      * Converts a StaffMember entity to a StaffMemberResource.
      *
@@ -17,8 +18,8 @@ public class StaffResourceFromEntityAssembler {
         return new StaffMemberResource(
                 entity.getId(),
                 entity.getLaboratoryId(),
-                entity.getFirstName(),
-                entity.getLastName(),
+                entity.getFullName(),
+                entity.getEmail(),
                 entity.getRole(),
                 entity.isActive()
         );

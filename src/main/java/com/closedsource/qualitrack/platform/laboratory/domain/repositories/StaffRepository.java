@@ -9,15 +9,17 @@ import java.util.Optional;
  * Staff member repository port.
  */
 public interface StaffRepository {
-    Optional<StaffMember> findById(String id);
+    Optional<StaffMember> findById(Long id);
 
     List<StaffMember> findAll();
 
-    List<StaffMember> findAllByLaboratoryId(String laboratoryId);
+    List<StaffMember> findAllByLaboratoryId(Long laboratoryId);
 
     StaffMember save(StaffMember staffMember);
 
-    boolean existsById(String id);
+    boolean existsById(Long id);
 
-    void deleteById(String id);
+    boolean existsByEmail(String email);
+
+    void deleteById(Long id);
 }

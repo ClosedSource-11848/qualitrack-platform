@@ -1,97 +1,119 @@
 package com.closedsource.qualitrack.platform.laboratory.domain.model.aggregates;
 
 import com.closedsource.qualitrack.platform.laboratory.domain.model.commands.CreateRawMaterialCommand;
-import com.closedsource.qualitrack.platform.laboratory.domain.model.events.RawMaterialLowStockEvent;
-import com.closedsource.qualitrack.platform.laboratory.domain.model.valueobjects.StockQuantity;
 import com.closedsource.qualitrack.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.util.Objects;
-import java.util.UUID;
 
 /**
- * RawMaterial aggregate root.
+ * Raw Material aggregate root.
  *
- * <p>Represents raw materials used for production in a laboratory.
- * It governs stock levels and triggers compliance alerts when stock falls below safety thresholds.</p>
+ * <p>Represents a raw material used by a laboratory within the QualiTrack platform.
+ * Governs the state of the material, its stock levels, and threshold alerts.</p>
  */
+@Getter
 public class RawMaterial extends AbstractDomainAggregateRoot<RawMaterial> {
 
-    @Getter
-    @Setter
-    private String id;
+    /**
+     * The unique numeric identifier for the raw material.
+     */
+    private Long id;
 
-    @Getter
-    private String laboratoryId;
+    /**
+     * The numeric identifier of the laboratory that owns this material.
+     */
+    private Long laboratoryId;
 
-    @Getter
     private String name;
-
-    @Getter
+    private String code;
+    private String supplier;
+    private String batchNumber;
+    private String expirationDate;
+    private Integer currentStock;
     private String unit;
+    private Integer minimumThreshold;
 
-    private StockQuantity stockQuantity;
-
-    // Safety threshold set by business rules (could be dynamic in a real scenario)
-    private final int minimumThreshold = 100;
-
+    /**
+     * Default constructor.
+     * Required for reconstruction by JPA or Assemblers.
+     */
     public RawMaterial() {
         // Required for reconstruction
     }
 
     /**
      * Constructor for reconstruction from the persistence layer (Assembler).
+     *
+     * @param id The numeric ID.
+     * @param laboratoryId The laboratory ID.
+     * @param name The material name.
+     * @param code The internal catalog code.
+     * @param supplier The external supplier.
+     * @param batchNumber The batch number.
+     * @param expirationDate The expiration date.
+     * @param currentStock The current stock level.
+     * @param unit The unit of measurement.
+     * @param minimumThreshold The minimum stock threshold.
      */
-    public RawMaterial(String id, String laboratoryId, String name, String unit, int currentStock) {
+    public RawMaterial(Long id, Long laboratoryId, String name, String code, String supplier,
+                       String batchNumber, String expirationDate, Integer currentStock,
+                       String unit, Integer minimumThreshold) {
         this.id = id;
         this.laboratoryId = laboratoryId;
         this.name = name;
+        this.code = code;
+        this.supplier = supplier;
+        this.batchNumber = batchNumber;
+        this.expirationDate = expirationDate;
+        this.currentStock = currentStock;
         this.unit = unit;
-        this.stockQuantity = new StockQuantity(currentStock);
+        this.minimumThreshold = minimumThreshold;
     }
 
     /**
-     * Constructor for RawMaterial with a CreateRawMaterialCommand.
-     * * @param command The CreateRawMaterialCommand.
+     * Constructor for creating a new RawMaterial from a command.
+     *
+     * @param command The CreateRawMaterialCommand containing initialization data.
      */
     public RawMaterial(CreateRawMaterialCommand command) {
-        this.id = UUID.randomUUID().toString();
         this.laboratoryId = Objects.requireNonNull(command.laboratoryId(), "Laboratory ID is required");
         this.name = Objects.requireNonNull(command.name(), "Material name is required");
+        this.code = Objects.requireNonNull(command.code(), "Code is required");
+        this.supplier = Objects.requireNonNull(command.supplier(), "Supplier is required");
+        this.batchNumber = Objects.requireNonNull(command.batchNumber(), "Batch number is required");
+        this.expirationDate = Objects.requireNonNull(command.expirationDate(), "Expiration date is required");
+        this.currentStock = Objects.requireNonNull(command.quantityInStock(), "Initial stock is required");
         this.unit = Objects.requireNonNull(command.unit(), "Unit is required");
-        this.stockQuantity = new StockQuantity(command.initialStock() != null ? command.initialStock() : 0);
+        this.minimumThreshold = Objects.requireNonNull(command.minimumStock(), "Minimum stock is required");
     }
 
     /**
-     * Gets the current stock value.
-     */
-    public int getCurrentStock() {
-        return this.stockQuantity.value();
-    }
-
-    /**
-     * Adds quantity to the current stock.
+     * Adds stock to the current inventory.
+     *
+     * @param amount The amount to add. Must be positive.
      */
     public void addStock(int amount) {
-        this.stockQuantity = this.stockQuantity.add(amount);
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Amount to add must be greater than zero");
+        }
+        this.currentStock += amount;
     }
 
     /**
-     * Consumes quantity from the current stock.
-     * Registers a RawMaterialLowStockEvent if the stock drops below the minimum threshold.
+     * Consumes stock from the current inventory.
+     *
+     * @param amount The amount to consume. Must be positive.
      */
     public void consumeStock(int amount) {
-        this.stockQuantity = this.stockQuantity.subtract(amount);
-
-        if (this.stockQuantity.value() < minimumThreshold) {
-            this.registerDomainEvent(new RawMaterialLowStockEvent(
-                    this.id,
-                    this.laboratoryId,
-                    this.name,
-                    this.stockQuantity.value(),
-                    this.minimumThreshold
-            ));
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Amount to consume must be greater than zero");
         }
+        if (this.currentStock - amount < 0) {
+            throw new IllegalStateException("Insufficient stock to consume");
+        }
+        this.currentStock -= amount;
+
+        // Note: You could publish a RawMaterialLowStockEvent here if currentStock < minimumThreshold
     }
 }

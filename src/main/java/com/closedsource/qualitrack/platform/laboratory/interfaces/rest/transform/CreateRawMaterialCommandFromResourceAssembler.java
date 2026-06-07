@@ -7,6 +7,7 @@ import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources
  * Assembler to convert a CreateRawMaterialResource to a CreateRawMaterialCommand.
  */
 public class CreateRawMaterialCommandFromResourceAssembler {
+
     /**
      * Converts a CreateRawMaterialResource to a CreateRawMaterialCommand.
      *
@@ -17,8 +18,13 @@ public class CreateRawMaterialCommandFromResourceAssembler {
         return new CreateRawMaterialCommand(
                 resource.laboratoryId(),
                 resource.name(),
+                resource.code(),
+                resource.supplier(),
+                resource.batchNumber(),
+                resource.expirationDate(),
+                resource.quantityInStock(),
                 resource.unit(),
-                resource.initialStock()
+                resource.minimumStock()
         );
     }
 }

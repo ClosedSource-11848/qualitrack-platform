@@ -2,34 +2,40 @@ package com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resource
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.util.List;
+
 /**
  * Laboratory resource.
+ *
+ * <p>Represents the data payload returned to the client when querying
+ * laboratory information from the QualiTrack platform.</p>
  */
 @Schema(
         name = "LaboratoryResponse",
         description = "Laboratory information response",
-        example = "{\"id\": \"LAB-1234\", \"name\": \"PharmaCorp\", \"regulationCode\": \"ISO-9001\", \"status\": \"ACTIVE\", \"street\": \"123 Tech Ave\", \"city\": \"Lima\", \"zipCode\": \"15001\"}"
+        example = "{\"id\": 1, \"name\": \"PharmaCorp\", \"ruc\": \"20123456789\", \"phone\": \"+51987654321\", \"applicableRegulations\": [\"ISO-9001\", \"BPA\"], \"address\": \"123 Tech Ave, Lima\", \"status\": \"ACTIVE\"}"
 )
 public record LaboratoryResource(
-        @Schema(description = "Laboratory unique identifier", example = "LAB-1234")
-        String id,
+
+        @Schema(description = "Laboratory unique numeric identifier", example = "1")
+        Long id,
 
         @Schema(description = "Laboratory official name", example = "PharmaCorp")
         String name,
 
-        @Schema(description = "Current regulatory compliance code", example = "ISO-9001")
-        String regulationCode,
+        @Schema(description = "Tax identification number (RUC)", example = "20123456789")
+        String ruc,
+
+        @Schema(description = "Contact phone number", example = "+51987654321")
+        String phone,
+
+        @Schema(description = "List of applicable regulatory compliance codes", example = "[\"ISO-9001\", \"BPA\"]")
+        List<String> applicableRegulations,
+
+        @Schema(description = "Full physical address", example = "123 Tech Ave, Lima")
+        String address,
 
         @Schema(description = "Current operational status", example = "ACTIVE")
-        String status,
-
-        @Schema(description = "Street address", example = "123 Tech Ave")
-        String street,
-
-        @Schema(description = "City location", example = "Lima")
-        String city,
-
-        @Schema(description = "Postal or zip code", example = "15001")
-        String zipCode
+        String status
 ) {
 }

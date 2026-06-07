@@ -3,45 +3,64 @@ package com.closedsource.qualitrack.platform.laboratory.infrastructure.persisten
 import com.closedsource.qualitrack.platform.laboratory.domain.model.aggregates.Laboratory;
 import com.closedsource.qualitrack.platform.laboratory.domain.model.entities.LaboratoryAddress;
 import com.closedsource.qualitrack.platform.laboratory.domain.model.valueobjects.LaboratoryName;
-import com.closedsource.qualitrack.platform.laboratory.infrastructure.persistence.jpa.embeddables.AddressPersistenceEmbeddable;
 import com.closedsource.qualitrack.platform.laboratory.infrastructure.persistence.jpa.entities.LaboratoryPersistenceEntity;
 
+import java.util.ArrayList;
+
+/**
+ * Assembler class to map between the Laboratory domain aggregate and its JPA persistence entity.
+ *
+ * <p>Ensures that the core domain remains completely decoupled from the database
+ * framework while transferring the state accurately.</p>
+ */
 public final class LaboratoryPersistenceAssembler {
 
-    private LaboratoryPersistenceAssembler() {}
+    private LaboratoryPersistenceAssembler() {
 
+    }
+
+    /**
+     * Reconstructs a Laboratory domain entity from a JPA persistence entity.
+     *
+     * @param entity the JPA entity retrieved from the database
+     * @return the reconstructed domain aggregate root
+     */
     public static Laboratory toDomainFromPersistence(LaboratoryPersistenceEntity entity) {
         if (entity == null) return null;
 
-        var address = new LaboratoryAddress(
-                entity.getAddress().getStreet(),
-                entity.getAddress().getCity(),
-                entity.getAddress().getZipCode()
-        );
-
         return new Laboratory(
-                entity.getDomainId(),
+                entity.getId(),
                 new LaboratoryName(entity.getName()),
-                entity.getRegulation(),
+                entity.getRuc(),
+                entity.getPhone(),
+                new ArrayList<>(entity.getApplicableRegulations()),
                 entity.getStatus(),
-                address
+                new LaboratoryAddress(entity.getAddress())
         );
     }
 
+    /**
+     * Maps a Laboratory domain entity to a JPA persistence entity for database storage.
+     *
+     * @param domain the domain aggregate root
+     * @return the JPA entity ready to be persisted
+     */
     public static LaboratoryPersistenceEntity toPersistenceFromDomain(Laboratory domain) {
         if (domain == null) return null;
 
         var entity = new LaboratoryPersistenceEntity();
-        entity.setDomainId(domain.getId());
+
         entity.setName(domain.getName().name());
-        entity.setRegulation(domain.getRegulation());
+        entity.setRuc(domain.getRuc());
+        entity.setPhone(domain.getPhone());
+
+        if (domain.getApplicableRegulations() != null) {
+            entity.setApplicableRegulations(new ArrayList<>(domain.getApplicableRegulations()));
+        }
+
         entity.setStatus(domain.getStatus());
 
-        entity.setAddress(new AddressPersistenceEmbeddable(
-                domain.getAddress().getStreet(),
-                domain.getAddress().getCity(),
-                domain.getAddress().getZipCode()
-        ));
+        entity.setAddress(domain.getAddress().getAddress());
 
         return entity;
     }

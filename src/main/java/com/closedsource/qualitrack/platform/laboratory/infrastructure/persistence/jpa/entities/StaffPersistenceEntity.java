@@ -6,6 +6,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * JPA persistence entity representing a Staff Member table.
+ *
+ * <p>This class bridges the relational database schema with the application's
+ * data access layer. It reflects the structure defined by the Angular frontend,
+ * utilizing a single full name and a unique email address.</p>
+ */
 @Entity
 @Table(name = "staff_members")
 @Getter
@@ -13,20 +20,24 @@ import lombok.Setter;
 @NoArgsConstructor
 public class StaffPersistenceEntity extends AuditableAbstractPersistenceEntity {
 
-    @Column(name = "domain_id", nullable = false, unique = true, updatable = false)
-    private String domainId;
+    // The numeric ID (Long) is inherited from AuditableAbstractPersistenceEntity.
+    // The previous String 'domainId' has been removed to unify IDs across layers.
 
     @Column(name = "laboratory_id", nullable = false)
-    private String laboratoryId;
+    private Long laboratoryId;
 
-    @Column(name = "first_name", nullable = false)
-    private String firstName;
+    @Column(name = "full_name", nullable = false, length = 150)
+    private String fullName;
 
-    @Column(name = "last_name", nullable = false)
-    private String lastName;
-
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String role;
+
+    /**
+     * Institutional or corporate email. Must be unique as it may be used
+     * for system authentication.
+     */
+    @Column(nullable = false, unique = true, length = 150)
+    private String email;
 
     @Column(nullable = false)
     private boolean active;

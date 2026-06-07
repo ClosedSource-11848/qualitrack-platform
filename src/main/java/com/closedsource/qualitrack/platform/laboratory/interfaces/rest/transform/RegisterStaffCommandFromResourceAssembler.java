@@ -7,6 +7,7 @@ import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources
  * Assembler to convert a RegisterStaffResource to a RegisterStaffCommand.
  */
 public class RegisterStaffCommandFromResourceAssembler {
+
     /**
      * Converts a RegisterStaffResource to a RegisterStaffCommand.
      *
@@ -16,8 +17,8 @@ public class RegisterStaffCommandFromResourceAssembler {
     public static RegisterStaffCommand toCommandFromResource(RegisterStaffResource resource) {
         return new RegisterStaffCommand(
                 resource.laboratoryId(),
-                resource.firstName(),
-                resource.lastName(),
+                resource.fullName(),
+                resource.email(),
                 resource.role()
         );
     }

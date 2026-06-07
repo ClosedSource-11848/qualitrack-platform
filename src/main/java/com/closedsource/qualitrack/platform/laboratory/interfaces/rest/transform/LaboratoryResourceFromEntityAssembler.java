@@ -7,6 +7,7 @@ import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources
  * Assembler to convert a Laboratory entity to a LaboratoryResource.
  */
 public class LaboratoryResourceFromEntityAssembler {
+
     /**
      * Converts a Laboratory entity to a LaboratoryResource.
      *
@@ -17,11 +18,11 @@ public class LaboratoryResourceFromEntityAssembler {
         return new LaboratoryResource(
                 entity.getId(),
                 entity.getName().name(),
-                entity.getRegulation().code(),
-                entity.getStatus().name(),
-                entity.getAddress().getStreet(),
-                entity.getAddress().getCity(),
-                entity.getAddress().getZipCode()
+                entity.getRuc(),
+                entity.getPhone(),
+                entity.getApplicableRegulations(),
+                entity.getAddress().getAddress(),
+                entity.getStatus().name()
         );
     }
 }

@@ -7,6 +7,7 @@ import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources
  * Assembler to convert a CreateProductResource to a CreateProductCommand.
  */
 public class CreateProductCommandFromResourceAssembler {
+
     /**
      * Converts a CreateProductResource to a CreateProductCommand.
      *
@@ -16,9 +17,10 @@ public class CreateProductCommandFromResourceAssembler {
     public static CreateProductCommand toCommandFromResource(CreateProductResource resource) {
         return new CreateProductCommand(
                 resource.laboratoryId(),
+                resource.code(),
                 resource.name(),
                 resource.description(),
-                resource.activeIngredient()
+                resource.specifications()
         );
     }
 }
