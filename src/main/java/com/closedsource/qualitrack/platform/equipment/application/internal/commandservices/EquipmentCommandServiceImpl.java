@@ -1,0 +1,88 @@
+package com.closedsource.qualitrack.platform.equipment.application.internal.commandservices;
+
+import com.closedsource.qualitrack.platform.equipment.application.commandservices.EquipmentCommandService;
+import com.closedsource.qualitrack.platform.equipment.application.internal.outboundservices.acl.ExternalLabService;
+import com.closedsource.qualitrack.platform.equipment.domain.model.aggregates.Equipment;
+import com.closedsource.qualitrack.platform.equipment.domain.model.commands.LinkSensorCommand;
+import com.closedsource.qualitrack.platform.equipment.domain.model.commands.RegisterEquipmentCommand;
+import com.closedsource.qualitrack.platform.equipment.domain.repositories.EquipmentRepository;
+import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
+import com.closedsource.qualitrack.platform.shared.application.result.Result;
+import org.springframework.stereotype.Service;
+
+/**
+ * Application service implementation that executes equipment commands.
+ *
+ * <p>Handles the orchestration of registering equipment and linking IoT sensors,
+ * enforcing business rules such as cross-context laboratory validation and
+ * unique serial numbers.</p>
+ */
+@Service
+public class EquipmentCommandServiceImpl implements EquipmentCommandService {
+
+    private final EquipmentRepository equipmentRepository;
+    private final ExternalLabService externalLabService;
+
+    public EquipmentCommandServiceImpl(EquipmentRepository equipmentRepository, ExternalLabService externalLabService) {
+        this.equipmentRepository = equipmentRepository;
+        this.externalLabService = externalLabService;
+    }
+
+    @Override
+    public Result<Long, ApplicationError> handle(RegisterEquipmentCommand command) {
+        if (!externalLabService.existsLaboratoryById(command.labId())) {
+            return Result.failure(ApplicationError.notFound(
+                    "Laboratory",
+                    String.valueOf(command.labId())
+            ));
+        }
+
+        // 2. Validate Unique Serial Number (Fail-Fast)
+        if (equipmentRepository.existsBySerialNumber(command.serialNumber())) {
+            return Result.failure(ApplicationError.conflict(
+                    "Equipment",
+                    "Equipment with serial number '%s' already exists".formatted(command.serialNumber())
+            ));
+        }
+
+        // 3. Create and Save
+        try {
+            var equipment = new Equipment(command);
+            var savedEquipment = equipmentRepository.save(equipment);
+
+            return Result.success(savedEquipment.getId());
+
+        } catch (IllegalArgumentException e) {
+            return Result.failure(ApplicationError.validationError("Equipment", e.getMessage()));
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unexpected("register-equipment", e.getMessage()));
+        }
+    }
+
+    @Override
+    public Result<Long, ApplicationError> handle(LinkSensorCommand command) {
+        var result = equipmentRepository.findById(command.equipmentId());
+
+        if (result.isEmpty()) {
+            return Result.failure(ApplicationError.notFound(
+                    "Equipment",
+                    String.valueOf(command.equipmentId())
+            ));
+        }
+
+        var equipment = result.get();
+
+        try {
+            equipment.linkSensor(command.sensorExternalId());
+
+            var updatedEquipment = equipmentRepository.save(equipment);
+
+            return Result.success(updatedEquipment.getId());
+
+        } catch (IllegalArgumentException e) {
+            return Result.failure(ApplicationError.validationError("Equipment", e.getMessage()));
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unexpected("link-sensor", e.getMessage()));
+        }
+    }
+}
