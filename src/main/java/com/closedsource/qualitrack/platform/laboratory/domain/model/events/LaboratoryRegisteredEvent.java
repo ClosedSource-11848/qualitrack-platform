@@ -9,11 +9,11 @@ import com.closedsource.qualitrack.platform.laboratory.domain.model.aggregates.L
  * to react to laboratory creation without directly coupling to the {@code laboratory}
  * application services.</p>
  *
- * @param laboratoryId The identity assigned to the newly created laboratory.
+ * @param laboratoryId The numeric identity assigned to the newly created laboratory.
  * @param name         The official name of the laboratory.
  */
 public record LaboratoryRegisteredEvent(
-        String laboratoryId,
+        Long laboratoryId,
         String name) {
 
     /**
