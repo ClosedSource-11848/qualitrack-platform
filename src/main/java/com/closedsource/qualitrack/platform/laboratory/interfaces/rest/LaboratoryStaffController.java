@@ -6,6 +6,7 @@ import com.closedsource.qualitrack.platform.laboratory.domain.model.commands.Reg
 import com.closedsource.qualitrack.platform.laboratory.domain.model.queries.GetStaffByLabIdQuery;
 import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources.RegisterStaffResource;
 import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources.StaffMemberResource;
+import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.transform.RegisterStaffCommandFromResourceAssembler;
 import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.transform.StaffResourceFromEntityAssembler;
 import com.closedsource.qualitrack.platform.shared.interfaces.rest.resources.MessageResource;
 import com.closedsource.qualitrack.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
@@ -49,12 +50,7 @@ public class LaboratoryStaffController {
             @PathVariable @Parameter(description = "Laboratory numeric identifier", example = "1", required = true) Long laboratoryId,
             @RequestBody RegisterStaffResource resource
     ) {
-        var command = new RegisterStaffCommand(
-                laboratoryId,
-                resource.fullName(),
-                resource.role(),
-                resource.email()
-                );
+        var command = RegisterStaffCommandFromResourceAssembler.toCommandFromResource(resource);
 
         var result = staffCommandService.handle(command)
                 .map(staffId -> new MessageResource("Staff member registered successfully with ID: " + staffId));
