@@ -93,7 +93,7 @@ public class StaffMember extends AbstractDomainAggregateRoot<StaffMember> {
         // Note: Event is registered here but the actual ID will be null until persistence.
         // If the downstream event handler requires the generated ID, you should emit
         // the event from the Application Service AFTER saving, rather than in this constructor.
-        this.registerDomainEvent(new StaffRegisteredEvent(this.id, this.laboratoryId, this.fullName, this.role));
+        this.registerDomainEvent(new StaffRegisteredEvent(this.id, this.laboratoryId, this.fullName, this.role, this.email));
     }
 
     /**

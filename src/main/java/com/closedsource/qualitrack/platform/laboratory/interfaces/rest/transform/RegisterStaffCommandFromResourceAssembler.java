@@ -18,8 +18,8 @@ public class RegisterStaffCommandFromResourceAssembler {
         return new RegisterStaffCommand(
                 resource.laboratoryId(),
                 resource.fullName(),
-                resource.email(),
-                resource.role()
-        );
+                resource.role(),
+                resource.email()
+                );
     }
 }

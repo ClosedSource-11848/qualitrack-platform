@@ -19,8 +19,8 @@ public class StaffResourceFromEntityAssembler {
                 entity.getId(),
                 entity.getLaboratoryId(),
                 entity.getFullName(),
-                entity.getEmail(),
                 entity.getRole(),
+                entity.getEmail(),
                 entity.isActive()
         );
     }

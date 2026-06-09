@@ -35,11 +35,11 @@ public record RegisterStaffResource(
         if (fullName == null || fullName.isBlank()) {
             throw new IllegalArgumentException("Full name is required");
         }
-        if (role == null || role.isBlank()) {
-            throw new IllegalArgumentException("Role is required");
-        }
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Email is required");
+        }
+        if (role == null || role.isBlank()) {
+            throw new IllegalArgumentException("Role is required");
         }
     }
 }

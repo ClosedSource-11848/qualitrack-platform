@@ -52,9 +52,9 @@ public class LaboratoryStaffController {
         var command = new RegisterStaffCommand(
                 laboratoryId,
                 resource.fullName(),
-                resource.email(),
-                resource.role()
-        );
+                resource.role(),
+                resource.email()
+                );
 
         var result = staffCommandService.handle(command)
                 .map(staffId -> new MessageResource("Staff member registered successfully with ID: " + staffId));
