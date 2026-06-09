@@ -103,8 +103,12 @@ public class BatchController {
         if (labId != null) {
             batches = batchQueryService.handle(new GetBatchesByLabIdQuery(labId));
         } else if (status != null && !status.isBlank()) {
-            var batchStatus = BatchStatus.valueOf(status.toUpperCase());
-            batches = batchQueryService.handle(new GetBatchesByStatusQuery(batchStatus));
+            try {
+                var batchStatus = BatchStatus.valueOf(status.toUpperCase());
+                batches = batchQueryService.handle(new GetBatchesByStatusQuery(batchStatus));
+            } catch (IllegalArgumentException exception) {
+                return ResponseEntity.badRequest().build();
+            }
         } else {
             return ResponseEntity.badRequest().build();
         }
