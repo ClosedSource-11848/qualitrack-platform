@@ -24,11 +24,11 @@ public record StaffMemberResource(
         @Schema(description = "Full legal name", example = "Jane Doe")
         String fullName,
 
-        @Schema(description = "Corporate email address", example = "jane.doe@pharmacorp.com")
-        String email,
-
         @Schema(description = "Assigned operational role", example = "Quality Inspector")
         String role,
+
+        @Schema(description = "Corporate email address", example = "jane.doe@pharmacorp.com")
+        String email,
 
         @Schema(description = "Is the staff member currently active", example = "true")
         boolean active

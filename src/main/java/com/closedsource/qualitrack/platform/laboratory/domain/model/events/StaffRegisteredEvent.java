@@ -15,5 +15,6 @@ public record StaffRegisteredEvent(
         Long staffMemberId,
         Long laboratoryId,
         String fullName,
-        String role) {
+        String role,
+        String email) {
 }
