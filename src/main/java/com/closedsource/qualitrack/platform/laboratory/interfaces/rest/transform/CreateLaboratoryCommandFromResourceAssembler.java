@@ -18,8 +18,8 @@ public class CreateLaboratoryCommandFromResourceAssembler {
         return new CreateLaboratoryCommand(
                 resource.name(),
                 resource.ruc(),
-                resource.phone(),
                 resource.address(),
+                resource.phone(),
                 resource.applicableRegulations()
                 );
     }
