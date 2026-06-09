@@ -8,12 +8,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(
         name = "RegisterStaffRequest",
         description = "Request payload for registering a new staff member",
-        example = "{\"laboratoryId\": 1, \"fullName\": \"Jane Doe\", \"role\": \"Quality Inspector\", \"email\": \"jane.doe@pharmacorp.com\"}"
+        example = "{\"fullName\": \"Jane Doe\", \"role\": \"Quality Inspector\", \"email\": \"jane.doe@pharmacorp.com\"}"
 )
 public record RegisterStaffResource(
 
-        @Schema(description = "Target laboratory numeric identifier", example = "1")
-        Long laboratoryId,
+
 
         @Schema(description = "Full legal name", example = "Jane Doe", minLength = 1, maxLength = 100)
         String fullName,
@@ -29,9 +28,6 @@ public record RegisterStaffResource(
      * @throws IllegalArgumentException if any field is missing or invalid.
      */
     public RegisterStaffResource {
-        if (laboratoryId == null || laboratoryId <= 0) {
-            throw new IllegalArgumentException("Laboratory ID is required and must be greater than zero");
-        }
         if (fullName == null || fullName.isBlank()) {
             throw new IllegalArgumentException("Full name is required");
         }

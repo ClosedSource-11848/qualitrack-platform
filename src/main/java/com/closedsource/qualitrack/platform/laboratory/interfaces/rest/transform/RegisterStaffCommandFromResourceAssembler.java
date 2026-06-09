@@ -14,9 +14,9 @@ public class RegisterStaffCommandFromResourceAssembler {
      * @param resource The {@link RegisterStaffResource} resource to convert.
      * @return The {@link RegisterStaffCommand} command that results from the conversion.
      */
-    public static RegisterStaffCommand toCommandFromResource(RegisterStaffResource resource) {
+    public static RegisterStaffCommand toCommandFromResource(RegisterStaffResource resource, Long laboratoryId) {
         return new RegisterStaffCommand(
-                resource.laboratoryId(),
+                laboratoryId,
                 resource.fullName(),
                 resource.role(),
                 resource.email()
