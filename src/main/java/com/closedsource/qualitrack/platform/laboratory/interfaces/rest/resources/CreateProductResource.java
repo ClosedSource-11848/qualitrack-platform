@@ -8,12 +8,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(
         name = "CreateProductRequest",
         description = "Request payload for creating a new pharmaceutical product",
-        example = "{\"laboratoryId\": 1, \"code\": \"PRD-ASP-500\", \"name\": \"Aspirin 500mg\", \"description\": \"Pain reliever\", \"specifications\": \"Acetylsalicylic acid 500mg, blister pack\"}"
+        example = "{\"code\": \"PRD-ASP-500\", \"name\": \"Aspirin 500mg\", \"description\": \"Pain reliever\", \"specifications\": \"Acetylsalicylic acid 500mg, blister pack\"}"
 )
 public record CreateProductResource(
-
-        @Schema(description = "Target laboratory numeric identifier", example = "1")
-        Long laboratoryId,
 
         @Schema(description = "Internal catalog code", example = "PRD-ASP-500", minLength = 1, maxLength = 50)
         String code,
@@ -32,9 +29,6 @@ public record CreateProductResource(
      * @throws IllegalArgumentException if required fields are missing or invalid.
      */
     public CreateProductResource {
-        if (laboratoryId == null || laboratoryId <= 0) {
-            throw new IllegalArgumentException("Laboratory ID is required and must be greater than zero");
-        }
         if (code == null || code.isBlank()) {
             throw new IllegalArgumentException("Product code is required");
         }

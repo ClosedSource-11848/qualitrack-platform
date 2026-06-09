@@ -11,12 +11,13 @@ public class RegisterMaintenanceCommandFromResourceAssembler {
     /**
      * Converts a RegisterMaintenanceResource to a RegisterMaintenanceCommand.
      *
+     * @param equipmentId The equipment numeric ID extracted from the path.
      * @param resource The {@link RegisterMaintenanceResource} resource to convert.
      * @return The {@link RegisterMaintenanceCommand} command that results from the conversion.
      */
-    public static RegisterMaintenanceCommand toCommandFromResource(RegisterMaintenanceResource resource) {
+    public static RegisterMaintenanceCommand toCommandFromResource(Long equipmentId, RegisterMaintenanceResource resource) {
         return new RegisterMaintenanceCommand(
-                resource.equipmentId(),
+                equipmentId,
                 resource.maintenanceDate(),
                 resource.technicianName(),
                 resource.description(),

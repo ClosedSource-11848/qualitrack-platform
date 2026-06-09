@@ -11,12 +11,13 @@ public class ConfigureBpmCommandFromResourceAssembler {
     /**
      * Converts a ConfigureBpmResource to a ConfigureBpmParametersCommand.
      *
+     * @param equipmentId The equipment numeric ID extracted from the path.
      * @param resource The {@link ConfigureBpmResource} resource to convert.
      * @return The {@link ConfigureBpmParametersCommand} command that results from the conversion.
      */
-    public static ConfigureBpmParametersCommand toCommandFromResource(ConfigureBpmResource resource) {
+    public static ConfigureBpmParametersCommand toCommandFromResource(Long equipmentId, ConfigureBpmResource resource) {
         return new ConfigureBpmParametersCommand(
-                resource.equipmentId(),
+                equipmentId,
                 resource.parameterName(),
                 resource.minValue(),
                 resource.maxValue(),
