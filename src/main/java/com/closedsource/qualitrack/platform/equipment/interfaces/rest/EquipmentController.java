@@ -4,6 +4,7 @@ import com.closedsource.qualitrack.platform.equipment.application.commandservice
 import com.closedsource.qualitrack.platform.equipment.application.queryservices.EquipmentQueryService;
 import com.closedsource.qualitrack.platform.equipment.domain.model.aggregates.Equipment;
 import com.closedsource.qualitrack.platform.equipment.domain.model.queries.GetEquipmentByIdQuery;
+import com.closedsource.qualitrack.platform.equipment.domain.model.queries.GetEquipmentByLabIdQuery;
 import com.closedsource.qualitrack.platform.equipment.interfaces.rest.resources.EquipmentResource;
 import com.closedsource.qualitrack.platform.equipment.interfaces.rest.resources.RegisterEquipmentResource;
 import com.closedsource.qualitrack.platform.equipment.interfaces.rest.transform.EquipmentResourceFromEntityAssembler;
@@ -21,6 +22,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
@@ -73,7 +76,27 @@ public class EquipmentController {
             @PathVariable @Parameter(description = "Equipment numeric identifier", example = "1", required = true) Long equipmentId
     ) {
         var equipment = equipmentQueryService.handle(new GetEquipmentByIdQuery(equipmentId));
+
         if (equipment.isEmpty()) return ResponseEntity.notFound().build();
+
         return ResponseEntity.ok(EquipmentResourceFromEntityAssembler.toResourceFromEntity(equipment.get()));
+    }
+
+    @GetMapping
+    @Operation(summary = "Get equipment by laboratory ID", description = "Retrieves all equipment assigned to a specific laboratory.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Equipment retrieved successfully"),
+            @ApiResponse(responseCode = "400", description = "Missing or invalid laboratory ID")
+    })
+    public ResponseEntity<List<EquipmentResource>> getEquipmentByLabId(
+            @RequestParam @Parameter(description = "Laboratory numeric identifier", example = "1", required = true) Long labId
+    ) {
+        var equipment = equipmentQueryService.handle(new GetEquipmentByLabIdQuery(labId));
+
+        var resources = equipment.stream()
+                .map(EquipmentResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+
+        return ResponseEntity.ok(resources);
     }
 }
