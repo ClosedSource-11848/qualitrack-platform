@@ -8,12 +8,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(
         name = "CreateRawMaterialRequest",
         description = "Request payload for registering a new raw material with initial stock",
-        example = "{\"laboratoryId\": 1, \"name\": \"Distilled Water\", \"code\": \"RM-DW-001\", \"supplier\": \"AquaChem\", \"batchNumber\": \"B-202606\", \"expirationDate\": \"2027-06-06\", \"quantityInStock\": 500, \"unit\": \"Liters\", \"minimumStock\": 50}"
+        example = "{\"name\": \"Distilled Water\", \"code\": \"RM-DW-001\", \"supplier\": \"AquaChem\", \"batchNumber\": \"B-202606\", \"expirationDate\": \"2027-06-06\", \"quantityInStock\": 500, \"unit\": \"Liters\", \"minimumStock\": 50}"
 )
 public record CreateRawMaterialResource(
-
-        @Schema(description = "Target laboratory numeric identifier", example = "1")
-        Long laboratoryId,
 
         @Schema(description = "Raw material name", example = "Distilled Water", minLength = 1, maxLength = 150)
         String name,
@@ -44,9 +41,6 @@ public record CreateRawMaterialResource(
      * @throws IllegalArgumentException if required fields are missing or invalid.
      */
     public CreateRawMaterialResource {
-        if (laboratoryId == null || laboratoryId <= 0) {
-            throw new IllegalArgumentException("Laboratory ID is required and must be greater than zero");
-        }
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Name is required");
         }

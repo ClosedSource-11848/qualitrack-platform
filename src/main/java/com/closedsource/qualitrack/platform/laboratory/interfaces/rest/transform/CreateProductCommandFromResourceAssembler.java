@@ -8,15 +8,9 @@ import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources
  */
 public class CreateProductCommandFromResourceAssembler {
 
-    /**
-     * Converts a CreateProductResource to a CreateProductCommand.
-     *
-     * @param resource The {@link CreateProductResource} resource to convert.
-     * @return The {@link CreateProductCommand} command that results from the conversion.
-     */
-    public static CreateProductCommand toCommandFromResource(CreateProductResource resource) {
+    public static CreateProductCommand toCommandFromResource(Long laboratoryId, CreateProductResource resource) {
         return new CreateProductCommand(
-                resource.laboratoryId(),
+                laboratoryId,
                 resource.code(),
                 resource.name(),
                 resource.description(),
