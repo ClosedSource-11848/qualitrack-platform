@@ -8,12 +8,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(
         name = "ConfigureBpmRequest",
         description = "Request payload for configuring an equipment's BPM parameter limits",
-        example = "{\"equipmentId\": 1, \"parameterName\": \"TEMPERATURE\", \"minValue\": 2.0, \"maxValue\": 8.0, \"unit\": \"Celsius\"}"
+        example = "{\"parameterName\": \"TEMPERATURE\", \"minValue\": 2.0, \"maxValue\": 8.0, \"unit\": \"Celsius\"}"
 )
 public record ConfigureBpmResource(
-
-        @Schema(description = "Target equipment numeric identifier", example = "1")
-        Long equipmentId,
 
         @Schema(description = "Critical variable or parameter name", example = "TEMPERATURE", minLength = 1, maxLength = 100)
         String parameterName,
@@ -32,9 +29,6 @@ public record ConfigureBpmResource(
      * @throws IllegalArgumentException if required fields are missing or invalid.
      */
     public ConfigureBpmResource {
-        if (equipmentId == null || equipmentId <= 0) {
-            throw new IllegalArgumentException("Equipment ID is required and must be greater than zero");
-        }
         if (parameterName == null || parameterName.isBlank()) {
             throw new IllegalArgumentException("Parameter name is required");
         }

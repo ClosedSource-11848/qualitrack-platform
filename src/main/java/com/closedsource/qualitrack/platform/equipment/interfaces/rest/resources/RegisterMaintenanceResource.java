@@ -8,12 +8,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(
         name = "RegisterMaintenanceRequest",
         description = "Request payload for logging a new maintenance intervention",
-        example = "{\"equipmentId\": 1, \"maintenanceDate\": \"2026-05-20\", \"technicianName\": \"John Smith\", \"description\": \"Annual calibration and sensor replacement\", \"type\": \"PREVENTIVE\"}"
+        example = "{\"maintenanceDate\": \"2026-05-20\", \"technicianName\": \"John Smith\", \"description\": \"Annual calibration and sensor replacement\", \"type\": \"PREVENTIVE\"}"
 )
 public record RegisterMaintenanceResource(
-
-        @Schema(description = "Target equipment numeric identifier", example = "1")
-        Long equipmentId,
 
         @Schema(description = "Date the maintenance was performed (ISO 8601)", example = "2026-05-20")
         String maintenanceDate,
@@ -32,9 +29,6 @@ public record RegisterMaintenanceResource(
      * @throws IllegalArgumentException if required fields are missing or invalid.
      */
     public RegisterMaintenanceResource {
-        if (equipmentId == null || equipmentId <= 0) {
-            throw new IllegalArgumentException("Equipment ID is required and must be greater than zero");
-        }
         if (maintenanceDate == null || maintenanceDate.isBlank()) {
             throw new IllegalArgumentException("Maintenance date is required");
         }
