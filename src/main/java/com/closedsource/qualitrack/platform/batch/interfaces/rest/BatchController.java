@@ -79,7 +79,9 @@ public class BatchController {
             @ApiResponse(responseCode = "404", description = "Batch not found")
     })
     public ResponseEntity<BatchResource> getBatchById(
-            @PathVariable @Parameter(description = "Batch numeric identifier", example = "1", required = true) Long batchId
+            @PathVariable
+            @Parameter(description = "Batch numeric identifier", example = "1", required = true)
+            Long batchId
     ) {
         var batch = batchQueryService.handle(new GetBatchByIdQuery(batchId));
 
@@ -88,30 +90,18 @@ public class BatchController {
         return ResponseEntity.ok(BatchResourceFromEntityAssembler.toResourceFromEntity(batch.get()));
     }
 
-    @GetMapping
-    @Operation(summary = "Get batches", description = "Retrieves production batches by laboratory ID or lifecycle status.")
+    @GetMapping(params = "status")
+    @Operation(summary = "Get batches by status", description = "Retrieves production batches by lifecycle status.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Batches retrieved successfully"),
-            @ApiResponse(responseCode = "400", description = "Missing or invalid query parameters")
+            @ApiResponse(responseCode = "400", description = "Invalid batch status")
     })
-    public ResponseEntity<List<BatchResource>> getBatches(
-            @RequestParam(required = false) @Parameter(description = "Laboratory numeric identifier", example = "1") Long labId,
-            @RequestParam(required = false) @Parameter(description = "Batch lifecycle status", example = "PENDING") String status
+    public ResponseEntity<List<BatchResource>> getBatchesByStatus(
+            @RequestParam
+            @Parameter(description = "Batch lifecycle status", example = "PENDING", required = true)
+            BatchStatus status
     ) {
-        List<Batch> batches;
-
-        if (labId != null) {
-            batches = batchQueryService.handle(new GetBatchesByLabIdQuery(labId));
-        } else if (status != null && !status.isBlank()) {
-            try {
-                var batchStatus = BatchStatus.valueOf(status.toUpperCase());
-                batches = batchQueryService.handle(new GetBatchesByStatusQuery(batchStatus));
-            } catch (IllegalArgumentException exception) {
-                return ResponseEntity.badRequest().build();
-            }
-        } else {
-            return ResponseEntity.badRequest().build();
-        }
+        var batches = batchQueryService.handle(new GetBatchesByStatusQuery(status));
 
         var resources = batches.stream()
                 .map(BatchResourceFromEntityAssembler::toResourceFromEntity)
@@ -128,7 +118,9 @@ public class BatchController {
             @ApiResponse(responseCode = "404", description = "Batch not found")
     })
     public ResponseEntity<?> releaseBatch(
-            @PathVariable @Parameter(description = "Batch numeric identifier", example = "1", required = true) Long batchId,
+            @PathVariable
+            @Parameter(description = "Batch numeric identifier", example = "1", required = true)
+            Long batchId,
             @RequestBody ReleaseBatchResource resource
     ) {
         var command = ReleaseBatchCommandFromResourceAssembler.toCommandFromResource(batchId, resource);
@@ -153,7 +145,9 @@ public class BatchController {
             @ApiResponse(responseCode = "404", description = "Batch not found")
     })
     public ResponseEntity<?> rejectBatch(
-            @PathVariable @Parameter(description = "Batch numeric identifier", example = "1", required = true) Long batchId,
+            @PathVariable
+            @Parameter(description = "Batch numeric identifier", example = "1", required = true)
+            Long batchId,
             @RequestBody RejectBatchResource resource
     ) {
         var command = RejectBatchCommandFromResourceAssembler.toCommandFromResource(batchId, resource);

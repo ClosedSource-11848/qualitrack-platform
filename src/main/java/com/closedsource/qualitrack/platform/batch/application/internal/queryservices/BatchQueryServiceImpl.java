@@ -30,7 +30,7 @@ public class BatchQueryServiceImpl implements BatchQueryService {
 
     @Override
     public List<Batch> handle(GetBatchesByLabIdQuery query) {
-        return batchRepository.findAllByLabId(query.laboratoryId());
+        return batchRepository.findAllByLabId(query.labId());
     }
 
     @Override
