@@ -1,5 +1,6 @@
 package com.closedsource.qualitrack.platform.laboratory.application.internal.eventhandlers;
 
+import com.closedsource.qualitrack.platform.laboratory.application.internal.outboundservices.acl.ExternalComplianceService;
 import com.closedsource.qualitrack.platform.laboratory.domain.model.events.RawMaterialLowStockEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -8,24 +9,21 @@ import org.springframework.stereotype.Service;
 /**
  * Application-layer event handler for {@link RawMaterialLowStockEvent}.
  *
- * <p>Listens for low stock alerts to trigger external notifications.
- * This is critical for communicating with the Compliance & Alerts (CA) bounded context
- * without creating a tight coupling between the modules.</p>
+ * <p>Listens for low stock alerts and delegates integration with the Compliance & Alerts
+ * bounded context through an outbound ACL service.</p>
  */
 @Service
 @Slf4j
 public class RawMaterialLowStockEventHandler {
 
-    /**
-     * Default constructor.
-     */
-    public RawMaterialLowStockEventHandler() {
+    private final ExternalComplianceService externalComplianceService;
+
+    public RawMaterialLowStockEventHandler(ExternalComplianceService externalComplianceService) {
+        this.externalComplianceService = externalComplianceService;
     }
 
     /**
      * Handles the {@link RawMaterialLowStockEvent}.
-     *
-     * <p>Logs a critical warning when a material falls below its safety threshold.</p>
      *
      * @param event the {@link RawMaterialLowStockEvent} published by the raw material aggregate
      */
@@ -38,7 +36,6 @@ public class RawMaterialLowStockEventHandler {
                 event.currentStock(),
                 event.minimumThreshold());
 
-        // TODO: En el futuro, inyectar ExternalComplianceService (del paquete acl)
-        // externalComplianceService.notifyLowStockDeviation(event);
+        externalComplianceService.notifyLowStockDeviation(event);
     }
 }
