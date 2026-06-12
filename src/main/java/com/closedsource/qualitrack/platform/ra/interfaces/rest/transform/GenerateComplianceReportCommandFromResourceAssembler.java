@@ -1,0 +1,30 @@
+package com.closedsource.qualitrack.platform.ra.interfaces.rest.transform;
+
+import com.closedsource.qualitrack.platform.ra.domain.model.commands.GenerateComplianceReportCommand;
+import com.closedsource.qualitrack.platform.ra.interfaces.rest.resources.GenerateComplianceReportResource;
+
+/**
+ * Assembler that transforms compliance report REST resources into application commands.
+ */
+public final class GenerateComplianceReportCommandFromResourceAssembler {
+    private GenerateComplianceReportCommandFromResourceAssembler() {
+    }
+
+    /**
+     * Converts a compliance report resource into a command.
+     *
+     * @param resource the compliance report request resource
+     * @return the compliance report generation command
+     */
+    public static GenerateComplianceReportCommand toCommandFromResource(
+            GenerateComplianceReportResource resource
+    ) {
+        return new GenerateComplianceReportCommand(
+                resource.laboratoryId(),
+                resource.startDate(),
+                resource.endDate(),
+                resource.format(),
+                resource.requestedBy()
+        );
+    }
+}
