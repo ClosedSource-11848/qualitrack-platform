@@ -113,4 +113,35 @@ public class ComplianceEvent {
         this.timestamp = timestamp;
         this.resolvedBy = resolvedBy;
     }
+
+    /**
+     * Determines whether this compliance event has been resolved.
+     *
+     * @return true when the event has a resolver assigned
+     */
+    public boolean isResolved() {
+        return resolvedBy != null;
+    }
+
+    /**
+     * Determines whether this compliance event is still pending resolution.
+     *
+     * @return true when the event has not been resolved
+     */
+    public boolean isUnresolved() {
+        return !isResolved();
+    }
+
+    /**
+     * Marks this compliance event as resolved by a user or system agent.
+     *
+     * @param resolverId the resolver user or agent identifier
+     */
+    public void resolve(Long resolverId) {
+        if (resolverId == null || resolverId <= 0) {
+            throw new IllegalArgumentException("resolverId cannot be null or less than 1");
+        }
+
+        this.resolvedBy = resolverId;
+    }
 }
