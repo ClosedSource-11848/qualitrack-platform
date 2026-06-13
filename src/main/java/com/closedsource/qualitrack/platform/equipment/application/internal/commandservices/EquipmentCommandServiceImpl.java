@@ -5,9 +5,12 @@ import com.closedsource.qualitrack.platform.equipment.application.internal.outbo
 import com.closedsource.qualitrack.platform.equipment.domain.model.aggregates.Equipment;
 import com.closedsource.qualitrack.platform.equipment.domain.model.commands.LinkSensorCommand;
 import com.closedsource.qualitrack.platform.equipment.domain.model.commands.RegisterEquipmentCommand;
+import com.closedsource.qualitrack.platform.equipment.domain.model.events.EquipmentRegisteredEvent;
+import com.closedsource.qualitrack.platform.equipment.domain.model.events.SensorLinkedEvent;
 import com.closedsource.qualitrack.platform.equipment.domain.repositories.EquipmentRepository;
 import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
 import com.closedsource.qualitrack.platform.shared.application.result.Result;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 /**
@@ -22,10 +25,14 @@ public class EquipmentCommandServiceImpl implements EquipmentCommandService {
 
     private final EquipmentRepository equipmentRepository;
     private final ExternalLabService externalLabService;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public EquipmentCommandServiceImpl(EquipmentRepository equipmentRepository, ExternalLabService externalLabService) {
+    public EquipmentCommandServiceImpl(EquipmentRepository equipmentRepository,
+                                       ExternalLabService externalLabService,
+                                       ApplicationEventPublisher eventPublisher) {
         this.equipmentRepository = equipmentRepository;
         this.externalLabService = externalLabService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -37,7 +44,6 @@ public class EquipmentCommandServiceImpl implements EquipmentCommandService {
             ));
         }
 
-        // 2. Validate Unique Serial Number (Fail-Fast)
         if (equipmentRepository.existsBySerialNumber(command.serialNumber())) {
             return Result.failure(ApplicationError.conflict(
                     "Equipment",
@@ -45,10 +51,11 @@ public class EquipmentCommandServiceImpl implements EquipmentCommandService {
             ));
         }
 
-        // 3. Create and Save
         try {
             var equipment = new Equipment(command);
             var savedEquipment = equipmentRepository.save(equipment);
+
+            eventPublisher.publishEvent(EquipmentRegisteredEvent.from(savedEquipment));
 
             return Result.success(savedEquipment.getId());
 
@@ -76,6 +83,11 @@ public class EquipmentCommandServiceImpl implements EquipmentCommandService {
             equipment.linkSensor(command.sensorExternalId());
 
             var updatedEquipment = equipmentRepository.save(equipment);
+
+            eventPublisher.publishEvent(new SensorLinkedEvent(
+                    updatedEquipment.getId(),
+                    command.sensorExternalId()
+            ));
 
             return Result.success(updatedEquipment.getId());
 

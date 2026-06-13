@@ -3,10 +3,12 @@ package com.closedsource.qualitrack.platform.equipment.application.internal.comm
 import com.closedsource.qualitrack.platform.equipment.application.commandservices.BpmConfigCommandService;
 import com.closedsource.qualitrack.platform.equipment.domain.model.commands.ConfigureBpmParametersCommand;
 import com.closedsource.qualitrack.platform.equipment.domain.model.entities.BpmParameterConfig;
+import com.closedsource.qualitrack.platform.equipment.domain.model.events.BpmParameterConfiguredEvent;
 import com.closedsource.qualitrack.platform.equipment.domain.repositories.BpmParameterConfigRepository;
 import com.closedsource.qualitrack.platform.equipment.domain.repositories.EquipmentRepository;
 import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
 import com.closedsource.qualitrack.platform.shared.application.result.Result;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -19,10 +21,14 @@ public class BpmConfigCommandServiceImpl implements BpmConfigCommandService {
 
     private final BpmParameterConfigRepository bpmConfigRepository;
     private final EquipmentRepository equipmentRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public BpmConfigCommandServiceImpl(BpmParameterConfigRepository bpmConfigRepository, EquipmentRepository equipmentRepository) {
+    public BpmConfigCommandServiceImpl(BpmParameterConfigRepository bpmConfigRepository,
+                                       EquipmentRepository equipmentRepository,
+                                       ApplicationEventPublisher eventPublisher) {
         this.bpmConfigRepository = bpmConfigRepository;
         this.equipmentRepository = equipmentRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -48,6 +54,9 @@ public class BpmConfigCommandServiceImpl implements BpmConfigCommandService {
             }
 
             var savedConfig = bpmConfigRepository.save(configToSave);
+
+            eventPublisher.publishEvent(BpmParameterConfiguredEvent.from(savedConfig));
+
             return Result.success(savedConfig.getId());
 
         } catch (IllegalArgumentException e) {

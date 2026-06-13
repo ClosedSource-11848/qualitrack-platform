@@ -1,24 +1,31 @@
 package com.closedsource.qualitrack.platform.ra.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.ra.domain.model.events.KpiDashboardCalculatedEvent;
+import com.closedsource.qualitrack.platform.ra.interfaces.events.KpiDashboardCalculatedIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
  * Application-layer event handler for {@link KpiDashboardCalculatedEvent}.
  *
- * <p>Listens for KPI dashboard calculation events to support downstream
- * reporting, analytics, or notification side effects.</p>
+ * <p>Publishes the Reporting & Audit integration event after a KPI dashboard
+ * is calculated, exposing RA's published language to other bounded contexts.</p>
  */
 @Service
 @Slf4j
 public class KpiDashboardCalculatedEventHandler {
 
+    private final ApplicationEventPublisher eventPublisher;
+
     /**
-     * Default constructor.
+     * Creates the handler with the Spring application event publisher.
+     *
+     * @param eventPublisher Spring application event publisher
      */
-    public KpiDashboardCalculatedEventHandler() {
+    public KpiDashboardCalculatedEventHandler(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -37,6 +44,6 @@ public class KpiDashboardCalculatedEventHandler {
                 event.calculatedAt()
         );
 
-        // TODO: In the future, trigger alerting when dashboard health is critical.
+        eventPublisher.publishEvent(KpiDashboardCalculatedIntegrationEvent.from(event));
     }
 }

@@ -1,31 +1,46 @@
 package com.closedsource.qualitrack.platform.tracking.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.tracking.domain.model.events.TelemetryAnomalyDetectedEvent;
+import com.closedsource.qualitrack.platform.tracking.interfaces.events.TelemetryAnomalyDetectedIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
- * Handles side effects triggered when a telemetry anomaly is detected.
+ * Handles internal telemetry anomaly detected events and publishes Tracking integration events.
  */
-@Slf4j
 @Service
+@Slf4j
 public class TelemetryAnomalyDetectedEventHandler {
+
+    private final ApplicationEventPublisher eventPublisher;
+
     /**
-     * Handles the telemetry anomaly detected domain event.
+     * Creates the handler with the Spring application event publisher.
      *
-     * @param event the telemetry anomaly detected event
+     * @param eventPublisher Spring application event publisher
      */
-    @EventListener
+    public TelemetryAnomalyDetectedEventHandler(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
+    /**
+     * Handles a telemetry anomaly detected domain event.
+     *
+     * @param event the internal Tracking domain event
+     */
+    @EventListener(TelemetryAnomalyDetectedEvent.class)
     public void on(TelemetryAnomalyDetectedEvent event) {
         log.warn(
-                "Telemetry anomaly detected. historyPointId={}, equipmentId={}, parameterName={}, recordedValue={}",
+                "Telemetry anomaly detected: History Point ID='{}', Equipment ID='{}', Parameter='{}', Value='{}', Timestamp='{}'.",
                 event.historyPointId(),
                 event.equipmentId(),
                 event.parameterName(),
-                event.recordedValue()
+                event.recordedValue(),
+                event.timestamp()
         );
 
-        // TODO: In the future, create or escalate deviation alerts through the CA bounded context.
+        eventPublisher.publishEvent(TelemetryAnomalyDetectedIntegrationEvent.from(event));
     }
 }

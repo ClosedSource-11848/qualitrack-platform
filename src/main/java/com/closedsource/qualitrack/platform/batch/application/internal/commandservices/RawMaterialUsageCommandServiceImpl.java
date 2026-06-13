@@ -3,11 +3,13 @@ package com.closedsource.qualitrack.platform.batch.application.internal.commands
 import com.closedsource.qualitrack.platform.batch.application.commandservices.RawMaterialUsageCommandService;
 import com.closedsource.qualitrack.platform.batch.domain.model.commands.LinkRawMaterialCommand;
 import com.closedsource.qualitrack.platform.batch.domain.model.entities.RawMaterialUsage;
+import com.closedsource.qualitrack.platform.batch.domain.model.events.RawMaterialLinkedToBatchEvent;
 import com.closedsource.qualitrack.platform.batch.domain.repositories.BatchRepository;
 import com.closedsource.qualitrack.platform.batch.domain.repositories.RawMaterialUsageRepository;
 import com.closedsource.qualitrack.platform.laboratory.domain.repositories.RawMaterialRepository;
 import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
 import com.closedsource.qualitrack.platform.shared.application.result.Result;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -24,13 +26,16 @@ public class RawMaterialUsageCommandServiceImpl implements RawMaterialUsageComma
     private final RawMaterialUsageRepository rawMaterialUsageRepository;
     private final BatchRepository batchRepository;
     private final RawMaterialRepository rawMaterialRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public RawMaterialUsageCommandServiceImpl(RawMaterialUsageRepository rawMaterialUsageRepository,
                                               BatchRepository batchRepository,
-                                              RawMaterialRepository rawMaterialRepository) {
+                                              RawMaterialRepository rawMaterialRepository,
+                                              ApplicationEventPublisher eventPublisher) {
         this.rawMaterialUsageRepository = rawMaterialUsageRepository;
         this.batchRepository = batchRepository;
         this.rawMaterialRepository = rawMaterialRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -62,6 +67,8 @@ public class RawMaterialUsageCommandServiceImpl implements RawMaterialUsageComma
             );
 
             var savedUsage = rawMaterialUsageRepository.save(usage);
+
+            eventPublisher.publishEvent(RawMaterialLinkedToBatchEvent.from(savedUsage));
 
             return Result.success(savedUsage.getId());
 

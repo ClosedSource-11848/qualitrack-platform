@@ -1,31 +1,46 @@
 package com.closedsource.qualitrack.platform.tracking.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.tracking.domain.model.events.EquipmentTelemetryStatusUpdatedEvent;
+import com.closedsource.qualitrack.platform.tracking.interfaces.events.EquipmentTelemetryStatusUpdatedIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
- * Handles side effects triggered after equipment telemetry status is updated.
+ * Handles internal equipment telemetry status updated events and publishes Tracking integration events.
  */
-@Slf4j
 @Service
+@Slf4j
 public class EquipmentTelemetryStatusUpdatedEventHandler {
+
+    private final ApplicationEventPublisher eventPublisher;
+
     /**
-     * Handles the equipment telemetry status updated domain event.
+     * Creates the handler with the Spring application event publisher.
      *
-     * @param event the equipment telemetry status updated event
+     * @param eventPublisher Spring application event publisher
      */
-    @EventListener
+    public EquipmentTelemetryStatusUpdatedEventHandler(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
+    /**
+     * Handles an equipment telemetry status updated domain event.
+     *
+     * @param event the internal Tracking domain event
+     */
+    @EventListener(EquipmentTelemetryStatusUpdatedEvent.class)
     public void on(EquipmentTelemetryStatusUpdatedEvent event) {
         log.info(
-                "Equipment telemetry status updated. statusId={}, equipmentId={}, isOnline={}, status={}",
+                "Equipment telemetry status updated: Status ID='{}', Equipment ID='{}', IsOnline='{}', CurrentStatus='{}', LastHeartbeat='{}'.",
                 event.statusId(),
                 event.equipmentId(),
                 event.isOnline(),
-                event.currentStatus()
+                event.currentStatus(),
+                event.lastHeartbeat()
         );
 
-        // TODO: In the future, synchronize equipment operational indicators with the Equipment BC.
+        eventPublisher.publishEvent(EquipmentTelemetryStatusUpdatedIntegrationEvent.from(event));
     }
 }

@@ -1,41 +1,46 @@
 package com.closedsource.qualitrack.platform.laboratory.application.internal.eventhandlers;
 
-import com.closedsource.qualitrack.platform.laboratory.application.internal.outboundservices.acl.ExternalComplianceService;
 import com.closedsource.qualitrack.platform.laboratory.domain.model.events.RawMaterialLowStockEvent;
+import com.closedsource.qualitrack.platform.laboratory.interfaces.events.RawMaterialLowStockIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
- * Application-layer event handler for {@link RawMaterialLowStockEvent}.
- *
- * <p>Listens for low stock alerts and delegates integration with the Compliance & Alerts
- * bounded context through an outbound ACL service.</p>
+ * Handles internal RawMaterialLowStockEvent events and publishes the corresponding integration event.
  */
 @Service
 @Slf4j
 public class RawMaterialLowStockEventHandler {
 
-    private final ExternalComplianceService externalComplianceService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
-    public RawMaterialLowStockEventHandler(ExternalComplianceService externalComplianceService) {
-        this.externalComplianceService = externalComplianceService;
+    /**
+     * Creates a new RawMaterialLowStockEventHandler.
+     *
+     * @param applicationEventPublisher Spring application event publisher
+     */
+    public RawMaterialLowStockEventHandler(ApplicationEventPublisher applicationEventPublisher) {
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     /**
-     * Handles the {@link RawMaterialLowStockEvent}.
+     * Handles the internal raw material low stock domain event.
      *
-     * @param event the {@link RawMaterialLowStockEvent} published by the raw material aggregate
+     * @param event the internal raw material low stock domain event
      */
     @EventListener(RawMaterialLowStockEvent.class)
     public void on(RawMaterialLowStockEvent event) {
-        log.warn("LOW STOCK ALERT CAUGHT: Material '{}' (ID: {}) in Laboratory '{}' has dropped to {} units. Minimum safety threshold is {}.",
-                event.materialName(),
+        log.warn(
+                "Raw material low stock. rawMaterialId={}, laboratoryId={}, materialName={}, currentStock={}, minimumThreshold={}",
                 event.rawMaterialId(),
                 event.laboratoryId(),
+                event.materialName(),
                 event.currentStock(),
-                event.minimumThreshold());
+                event.minimumThreshold()
+        );
 
-        externalComplianceService.notifyLowStockDeviation(event);
+        applicationEventPublisher.publishEvent(RawMaterialLowStockIntegrationEvent.from(event));
     }
 }

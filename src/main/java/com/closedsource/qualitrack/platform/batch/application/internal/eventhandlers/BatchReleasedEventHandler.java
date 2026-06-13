@@ -1,41 +1,46 @@
 package com.closedsource.qualitrack.platform.batch.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.batch.domain.model.events.BatchReleasedEvent;
+import com.closedsource.qualitrack.platform.batch.interfaces.events.BatchReleasedIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
- * Application-layer event handler for {@link BatchReleasedEvent}.
- *
- * <p>Listens for batch release events to trigger reporting, audit trail,
- * or compliance-related side effects.</p>
+ * Handles internal BatchReleasedEvent events and publishes the corresponding integration event.
  */
-@Service
 @Slf4j
+@Service
 public class BatchReleasedEventHandler {
 
+    private final ApplicationEventPublisher applicationEventPublisher;
+
     /**
-     * Default constructor.
+     * Creates a new BatchReleasedEventHandler.
+     *
+     * @param applicationEventPublisher Spring application event publisher
      */
-    public BatchReleasedEventHandler() {
+    public BatchReleasedEventHandler(ApplicationEventPublisher applicationEventPublisher) {
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     /**
-     * Handles the {@link BatchReleasedEvent}.
+     * Handles the internal batch released domain event.
      *
-     * @param event the {@link BatchReleasedEvent} published by the batch aggregate
+     * @param event the internal batch released domain event
      */
     @EventListener(BatchReleasedEvent.class)
     public void on(BatchReleasedEvent event) {
-        log.info("Batch released successfully: ID='{}', BatchNumber='{}', Laboratory ID='{}', Product ID='{}', ReleaseDate='{}'.",
+        log.info(
+                "Batch released. batchId={}, laboratoryId={}, productId={}, batchNumber={}, releaseDate={}",
                 event.batchId(),
-                event.batchNumber(),
                 event.laboratoryId(),
                 event.productId(),
-                event.releaseDate());
+                event.batchNumber(),
+                event.releaseDate()
+        );
 
-        // TODO: En el futuro, inyectar ExternalAuditService o ExternalReportingService
-        // para registrar la liberacion del lote en RA.
+        applicationEventPublisher.publishEvent(BatchReleasedIntegrationEvent.from(event));
     }
 }

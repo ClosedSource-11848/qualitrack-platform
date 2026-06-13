@@ -11,11 +11,11 @@ import org.springframework.stereotype.Service;
  * laboratory bounded context.</p>
  */
 @Service
-public class ExternalComplianceService {
+public class LaboratoryExternalComplianceService {
 
     private final ComplianceContextFacade complianceContextFacade;
 
-    public ExternalComplianceService(ComplianceContextFacade complianceContextFacade) {
+    public LaboratoryExternalComplianceService(ComplianceContextFacade complianceContextFacade) {
         this.complianceContextFacade = complianceContextFacade;
     }
 

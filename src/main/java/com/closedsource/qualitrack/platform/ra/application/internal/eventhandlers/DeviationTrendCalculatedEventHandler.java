@@ -1,24 +1,31 @@
 package com.closedsource.qualitrack.platform.ra.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.ra.domain.model.events.DeviationTrendCalculatedEvent;
+import com.closedsource.qualitrack.platform.ra.interfaces.events.DeviationTrendCalculatedIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
  * Application-layer event handler for {@link DeviationTrendCalculatedEvent}.
  *
- * <p>Listens for deviation trend calculation events to support downstream
- * analytics, monitoring, or compliance notifications.</p>
+ * <p>Publishes the Reporting & Audit integration event after a deviation trend
+ * is calculated, exposing RA's published language to other bounded contexts.</p>
  */
 @Service
 @Slf4j
 public class DeviationTrendCalculatedEventHandler {
 
+    private final ApplicationEventPublisher eventPublisher;
+
     /**
-     * Default constructor.
+     * Creates the handler with the Spring application event publisher.
+     *
+     * @param eventPublisher Spring application event publisher
      */
-    public DeviationTrendCalculatedEventHandler() {
+    public DeviationTrendCalculatedEventHandler(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -37,6 +44,6 @@ public class DeviationTrendCalculatedEventHandler {
                 event.calculatedAt()
         );
 
-        // TODO: In the future, notify CA when a worsening trend requires compliance attention.
+        eventPublisher.publishEvent(DeviationTrendCalculatedIntegrationEvent.from(event));
     }
 }

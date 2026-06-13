@@ -1,41 +1,46 @@
 package com.closedsource.qualitrack.platform.batch.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.batch.domain.model.events.BatchRejectedEvent;
+import com.closedsource.qualitrack.platform.batch.interfaces.events.BatchRejectedIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
- * Application-layer event handler for {@link BatchRejectedEvent}.
- *
- * <p>Listens for batch rejection events to trigger audit, compliance alerts,
- * or quality-control reporting.</p>
+ * Handles internal BatchRejectedEvent events and publishes the corresponding integration event.
  */
-@Service
 @Slf4j
+@Service
 public class BatchRejectedEventHandler {
 
+    private final ApplicationEventPublisher applicationEventPublisher;
+
     /**
-     * Default constructor.
+     * Creates a new BatchRejectedEventHandler.
+     *
+     * @param applicationEventPublisher Spring application event publisher
      */
-    public BatchRejectedEventHandler() {
+    public BatchRejectedEventHandler(ApplicationEventPublisher applicationEventPublisher) {
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     /**
-     * Handles the {@link BatchRejectedEvent}.
+     * Handles the internal batch rejected domain event.
      *
-     * @param event the {@link BatchRejectedEvent} published by the batch aggregate
+     * @param event the internal batch rejected domain event
      */
     @EventListener(BatchRejectedEvent.class)
     public void on(BatchRejectedEvent event) {
-        log.warn("BATCH REJECTED ALERT: Batch '{}' (ID: {}) in Laboratory ID {} was rejected on '{}'. Reason: {}",
-                event.batchNumber(),
+        log.info(
+                "Batch rejected. batchId={}, laboratoryId={}, productId={}, batchNumber={}, rejectionDate={}",
                 event.batchId(),
                 event.laboratoryId(),
-                event.rejectionDate(),
-                event.reason());
+                event.productId(),
+                event.batchNumber(),
+                event.rejectionDate()
+        );
 
-        // TODO: En el futuro, inyectar ExternalComplianceService
-        // para disparar alertas de desviacion o registrar el evento en CA.
+        applicationEventPublisher.publishEvent(BatchRejectedIntegrationEvent.from(event));
     }
 }
