@@ -10,12 +10,17 @@ import com.closedsource.qualitrack.platform.ca.domain.model.commands.ResolveAler
 import com.closedsource.qualitrack.platform.ca.domain.model.commands.UpdateNotificationPreferenceCommand;
 import com.closedsource.qualitrack.platform.ca.domain.model.entities.ComplianceEvent;
 import com.closedsource.qualitrack.platform.ca.domain.model.entities.NotificationPreference;
+import com.closedsource.qualitrack.platform.ca.domain.model.events.DeviationAlertAcknowledgedEvent;
+import com.closedsource.qualitrack.platform.ca.domain.model.events.DeviationAlertCreatedEvent;
+import com.closedsource.qualitrack.platform.ca.domain.model.events.DeviationAlertResolvedEvent;
+import com.closedsource.qualitrack.platform.ca.domain.model.events.NotificationPreferenceUpdatedEvent;
 import com.closedsource.qualitrack.platform.ca.domain.model.valueobjects.ComplianceEventType;
 import com.closedsource.qualitrack.platform.ca.domain.repositories.ComplianceEventRepository;
 import com.closedsource.qualitrack.platform.ca.domain.repositories.DeviationAlertRepository;
 import com.closedsource.qualitrack.platform.ca.domain.repositories.NotificationPreferenceRepository;
 import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
 import com.closedsource.qualitrack.platform.shared.application.result.Result;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -35,19 +40,22 @@ public class CaCommandServiceImpl implements CaCommandService {
     private final NotificationPreferenceRepository notificationPreferenceRepository;
     private final CaExternalEquipmentService caExternalEquipmentService;
     private final CaExternalBatchService caExternalBatchService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public CaCommandServiceImpl(
             DeviationAlertRepository deviationAlertRepository,
             ComplianceEventRepository complianceEventRepository,
             NotificationPreferenceRepository notificationPreferenceRepository,
             CaExternalEquipmentService caExternalEquipmentService,
-            CaExternalBatchService caExternalBatchService
+            CaExternalBatchService caExternalBatchService,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.deviationAlertRepository = deviationAlertRepository;
         this.complianceEventRepository = complianceEventRepository;
         this.notificationPreferenceRepository = notificationPreferenceRepository;
         this.caExternalEquipmentService = caExternalEquipmentService;
         this.caExternalBatchService = caExternalBatchService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -77,6 +85,8 @@ public class CaCommandServiceImpl implements CaCommandService {
                     Instant.now().toString(),
                     null
             ));
+
+            eventPublisher.publishEvent(DeviationAlertCreatedEvent.from(savedAlert));
 
             return Result.success(savedAlert.getId());
 
@@ -113,6 +123,8 @@ public class CaCommandServiceImpl implements CaCommandService {
                     updatedAlert.getAcknowledgedBy()
             ));
 
+            eventPublisher.publishEvent(DeviationAlertAcknowledgedEvent.from(updatedAlert));
+
             return Result.success(updatedAlert.getId());
 
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -148,6 +160,8 @@ public class CaCommandServiceImpl implements CaCommandService {
                     updatedAlert.getResolvedBy()
             ));
 
+            eventPublisher.publishEvent(DeviationAlertResolvedEvent.from(updatedAlert));
+
             return Result.success(updatedAlert.getId());
 
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -174,6 +188,8 @@ public class CaCommandServiceImpl implements CaCommandService {
                     Instant.now().toString(),
                     updatedPreference.getUserId()
             ));
+
+            eventPublisher.publishEvent(NotificationPreferenceUpdatedEvent.from(updatedPreference));
 
             return Result.success(updatedPreference);
 

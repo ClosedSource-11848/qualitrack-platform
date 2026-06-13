@@ -6,10 +6,14 @@ import com.closedsource.qualitrack.platform.batch.domain.model.aggregates.Batch;
 import com.closedsource.qualitrack.platform.batch.domain.model.commands.CreateBatchCommand;
 import com.closedsource.qualitrack.platform.batch.domain.model.commands.ReleaseBatchCommand;
 import com.closedsource.qualitrack.platform.batch.domain.model.commands.RejectBatchCommand;
+import com.closedsource.qualitrack.platform.batch.domain.model.events.BatchCreatedEvent;
+import com.closedsource.qualitrack.platform.batch.domain.model.events.BatchRejectedEvent;
+import com.closedsource.qualitrack.platform.batch.domain.model.events.BatchReleasedEvent;
 import com.closedsource.qualitrack.platform.batch.domain.repositories.BatchRepository;
 import com.closedsource.qualitrack.platform.laboratory.domain.repositories.ProductRepository;
 import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
 import com.closedsource.qualitrack.platform.shared.application.result.Result;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 /**
@@ -25,13 +29,16 @@ public class BatchCommandServiceImpl implements BatchCommandService {
     private final BatchRepository batchRepository;
     private final ExternalLaboratoryService externalLaboratoryService;
     private final ProductRepository productRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public BatchCommandServiceImpl(BatchRepository batchRepository,
                                    ExternalLaboratoryService externalLaboratoryService,
-                                   ProductRepository productRepository) {
+                                   ProductRepository productRepository,
+                                   ApplicationEventPublisher eventPublisher) {
         this.batchRepository = batchRepository;
         this.externalLaboratoryService = externalLaboratoryService;
         this.productRepository = productRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -70,6 +77,8 @@ public class BatchCommandServiceImpl implements BatchCommandService {
 
             var savedBatch = batchRepository.save(batch);
 
+            eventPublisher.publishEvent(BatchCreatedEvent.from(savedBatch));
+
             return Result.success(savedBatch.getId());
 
         } catch (IllegalArgumentException e) {
@@ -97,6 +106,8 @@ public class BatchCommandServiceImpl implements BatchCommandService {
 
             var updatedBatch = batchRepository.save(batch);
 
+            eventPublisher.publishEvent(BatchReleasedEvent.from(updatedBatch));
+
             return Result.success(updatedBatch.getId());
 
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -123,6 +134,8 @@ public class BatchCommandServiceImpl implements BatchCommandService {
             batch.reject(command);
 
             var updatedBatch = batchRepository.save(batch);
+
+            eventPublisher.publishEvent(BatchRejectedEvent.from(updatedBatch));
 
             return Result.success(updatedBatch.getId());
 

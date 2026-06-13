@@ -9,10 +9,15 @@ import com.closedsource.qualitrack.platform.tracking.domain.model.commands.Updat
 import com.closedsource.qualitrack.platform.tracking.domain.model.entities.EquipmentTelemetryStatus;
 import com.closedsource.qualitrack.platform.tracking.domain.model.entities.Measurement;
 import com.closedsource.qualitrack.platform.tracking.domain.model.entities.TelemetryHistoryPoint;
+import com.closedsource.qualitrack.platform.tracking.domain.model.events.EquipmentTelemetryStatusUpdatedEvent;
+import com.closedsource.qualitrack.platform.tracking.domain.model.events.MeasurementRecordedEvent;
+import com.closedsource.qualitrack.platform.tracking.domain.model.events.TelemetryAnomalyDetectedEvent;
+import com.closedsource.qualitrack.platform.tracking.domain.model.events.TelemetryHistoryPointRecordedEvent;
 import com.closedsource.qualitrack.platform.tracking.domain.repositories.EquipmentTelemetryRepository;
 import com.closedsource.qualitrack.platform.tracking.domain.repositories.EquipmentTelemetryStatusRepository;
 import com.closedsource.qualitrack.platform.tracking.domain.repositories.MeasurementRepository;
 import com.closedsource.qualitrack.platform.tracking.domain.repositories.TelemetryHistoryPointRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 /**
@@ -30,6 +35,7 @@ public class TrackingCommandServiceImpl implements TrackingCommandService {
     private final EquipmentTelemetryStatusRepository statusRepository;
     private final TelemetryHistoryPointRepository historyPointRepository;
     private final EquipmentTelemetryRepository equipmentTelemetryRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Creates a new TrackingCommandServiceImpl.
@@ -38,25 +44,22 @@ public class TrackingCommandServiceImpl implements TrackingCommandService {
      * @param statusRepository repository for equipment telemetry statuses
      * @param historyPointRepository repository for telemetry history points
      * @param equipmentTelemetryRepository repository for equipment telemetry aggregates
+     * @param eventPublisher Spring application event publisher
      */
     public TrackingCommandServiceImpl(
             MeasurementRepository measurementRepository,
             EquipmentTelemetryStatusRepository statusRepository,
             TelemetryHistoryPointRepository historyPointRepository,
-            EquipmentTelemetryRepository equipmentTelemetryRepository
+            EquipmentTelemetryRepository equipmentTelemetryRepository,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.measurementRepository = measurementRepository;
         this.statusRepository = statusRepository;
         this.historyPointRepository = historyPointRepository;
         this.equipmentTelemetryRepository = equipmentTelemetryRepository;
+        this.eventPublisher = eventPublisher;
     }
 
-    /**
-     * Records a new telemetry measurement.
-     *
-     * @param command the record measurement command
-     * @return the recorded measurement identifier or an application error
-     */
     @Override
     public Result<Long, ApplicationError> handle(RecordMeasurementCommand command) {
         try {
@@ -72,6 +75,15 @@ public class TrackingCommandServiceImpl implements TrackingCommandService {
 
             var savedMeasurement = measurementRepository.save(measurement);
 
+            eventPublisher.publishEvent(new MeasurementRecordedEvent(
+                    savedMeasurement.getId(),
+                    savedMeasurement.getEquipmentId(),
+                    savedMeasurement.getParameterName(),
+                    savedMeasurement.getValue(),
+                    savedMeasurement.getUnit(),
+                    savedMeasurement.getTimestamp()
+            ));
+
             return Result.success(savedMeasurement.getId());
         } catch (IllegalArgumentException exception) {
             return Result.failure(ApplicationError.validationError("measurement", exception.getMessage()));
@@ -83,12 +95,6 @@ public class TrackingCommandServiceImpl implements TrackingCommandService {
         }
     }
 
-    /**
-     * Records a new telemetry history point.
-     *
-     * @param command the record telemetry history point command
-     * @return the recorded history point identifier or an application error
-     */
     @Override
     public Result<Long, ApplicationError> handle(RecordTelemetryHistoryPointCommand command) {
         try {
@@ -104,6 +110,25 @@ public class TrackingCommandServiceImpl implements TrackingCommandService {
 
             var savedHistoryPoint = historyPointRepository.save(historyPoint);
 
+            eventPublisher.publishEvent(new TelemetryHistoryPointRecordedEvent(
+                    savedHistoryPoint.getId(),
+                    savedHistoryPoint.getEquipmentId(),
+                    savedHistoryPoint.getParameterName(),
+                    savedHistoryPoint.getRecordedValue(),
+                    savedHistoryPoint.getTimestamp(),
+                    savedHistoryPoint.getIsAnomaly()
+            ));
+
+            if (Boolean.TRUE.equals(savedHistoryPoint.getIsAnomaly())) {
+                eventPublisher.publishEvent(new TelemetryAnomalyDetectedEvent(
+                        savedHistoryPoint.getId(),
+                        savedHistoryPoint.getEquipmentId(),
+                        savedHistoryPoint.getParameterName(),
+                        savedHistoryPoint.getRecordedValue(),
+                        savedHistoryPoint.getTimestamp()
+                ));
+            }
+
             return Result.success(savedHistoryPoint.getId());
         } catch (IllegalArgumentException exception) {
             return Result.failure(ApplicationError.validationError("telemetry history point", exception.getMessage()));
@@ -115,12 +140,6 @@ public class TrackingCommandServiceImpl implements TrackingCommandService {
         }
     }
 
-    /**
-     * Updates the current telemetry status for equipment.
-     *
-     * @param command the update equipment telemetry status command
-     * @return the saved status identifier or an application error
-     */
     @Override
     public Result<Long, ApplicationError> handle(UpdateEquipmentTelemetryStatusCommand command) {
         try {
@@ -134,6 +153,14 @@ public class TrackingCommandServiceImpl implements TrackingCommandService {
             );
 
             var savedStatus = statusRepository.save(status);
+
+            eventPublisher.publishEvent(new EquipmentTelemetryStatusUpdatedEvent(
+                    savedStatus.getId(),
+                    savedStatus.getEquipmentId(),
+                    savedStatus.getIsOnline(),
+                    savedStatus.getCurrentStatus(),
+                    savedStatus.getLastHeartbeat()
+            ));
 
             return Result.success(savedStatus.getId());
         } catch (IllegalArgumentException exception) {
