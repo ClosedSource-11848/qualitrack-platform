@@ -1,32 +1,47 @@
 package com.closedsource.qualitrack.platform.tracking.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.tracking.domain.model.events.MeasurementRecordedEvent;
+import com.closedsource.qualitrack.platform.tracking.interfaces.events.MeasurementRecordedIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
- * Handles side effects triggered after a telemetry measurement is recorded.
+ * Handles internal measurement recorded events and publishes Tracking integration events.
  */
-@Slf4j
 @Service
+@Slf4j
 public class MeasurementRecordedEventHandler {
+
+    private final ApplicationEventPublisher eventPublisher;
+
     /**
-     * Handles the measurement recorded domain event.
+     * Creates the handler with the Spring application event publisher.
      *
-     * @param event the measurement recorded event
+     * @param eventPublisher Spring application event publisher
      */
-    @EventListener
+    public MeasurementRecordedEventHandler(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
+    /**
+     * Handles a measurement recorded domain event.
+     *
+     * @param event the internal Tracking domain event
+     */
+    @EventListener(MeasurementRecordedEvent.class)
     public void on(MeasurementRecordedEvent event) {
         log.info(
-                "Telemetry measurement recorded. measurementId={}, equipmentId={}, parameterName={}, value={}, unit={}",
+                "Telemetry measurement recorded: Measurement ID='{}', Equipment ID='{}', Parameter='{}', Value='{}', Unit='{}', Timestamp='{}'.",
                 event.measurementId(),
                 event.equipmentId(),
                 event.parameterName(),
                 event.value(),
-                event.unit()
+                event.unit(),
+                event.timestamp()
         );
 
-        // TODO: In the future, publish this measurement to RA for KPI and trend calculation.
+        eventPublisher.publishEvent(MeasurementRecordedIntegrationEvent.from(event));
     }
 }

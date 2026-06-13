@@ -1,25 +1,31 @@
 package com.closedsource.qualitrack.platform.ra.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.ra.domain.model.events.AuditReportGeneratedEvent;
+import com.closedsource.qualitrack.platform.ra.interfaces.events.AuditReportGeneratedIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
  * Application-layer event handler for {@link AuditReportGeneratedEvent}.
  *
- * <p>Listens for audit report generation events to perform downstream side
- * effects such as notifications, audit indexing, or external storage
- * synchronization.</p>
+ * <p>Publishes the Reporting & Audit integration event after an audit report
+ * is generated, exposing RA's published language to other bounded contexts.</p>
  */
 @Service
 @Slf4j
 public class AuditReportGeneratedEventHandler {
 
+    private final ApplicationEventPublisher eventPublisher;
+
     /**
-     * Default constructor.
+     * Creates the handler with the Spring application event publisher.
+     *
+     * @param eventPublisher Spring application event publisher
      */
-    public AuditReportGeneratedEventHandler() {
+    public AuditReportGeneratedEventHandler(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -40,6 +46,6 @@ public class AuditReportGeneratedEventHandler {
                 event.generatedAt()
         );
 
-        // TODO: In the future, notify external storage or document indexing services.
+        eventPublisher.publishEvent(AuditReportGeneratedIntegrationEvent.from(event));
     }
 }

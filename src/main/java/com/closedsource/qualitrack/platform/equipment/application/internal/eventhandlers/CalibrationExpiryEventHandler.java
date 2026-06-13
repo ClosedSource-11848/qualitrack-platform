@@ -1,44 +1,45 @@
 package com.closedsource.qualitrack.platform.equipment.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.equipment.domain.model.events.CalibrationExpiredEvent;
+import com.closedsource.qualitrack.platform.equipment.interfaces.events.CalibrationExpiredIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
- * Application-layer event handler for {@link CalibrationExpiredEvent}.
- *
- * <p>Listens for equipment calibration expiration alerts to trigger external notifications.
- * This is critical for communicating with the Compliance & Alerts (CA) bounded context
- * to halt equipment usage and ensure DIGEMID regulatory compliance.</p>
+ * Handles internal CalibrationExpiredEvent events and publishes the corresponding integration event.
  */
 @Service
 @Slf4j
 public class CalibrationExpiryEventHandler {
 
+    private final ApplicationEventPublisher applicationEventPublisher;
+
     /**
-     * Default constructor.
+     * Creates a new CalibrationExpiryEventHandler.
+     *
+     * @param applicationEventPublisher Spring application event publisher
      */
-    public CalibrationExpiryEventHandler() {
+    public CalibrationExpiryEventHandler(ApplicationEventPublisher applicationEventPublisher) {
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     /**
-     * Handles the {@link CalibrationExpiredEvent}.
+     * Handles the internal calibration expired domain event.
      *
-     * <p>Logs a critical warning when an equipment's calibration validity period expires.</p>
-     *
-     * @param event the {@link CalibrationExpiredEvent} published by the equipment aggregate
+     * @param event the internal calibration expired domain event
      */
     @EventListener(CalibrationExpiredEvent.class)
     public void on(CalibrationExpiredEvent event) {
-        log.warn("CALIBRATION EXPIRED ALERT: Equipment '{}' (SN: {}) in Laboratory ID {} has an expired calibration. Immediate action required for regulatory compliance.",
+        log.warn(
+                "Calibration expired. equipmentId={}, equipmentName={}, serialNumber={}, laboratoryId={}",
+                event.equipmentId(),
                 event.equipmentName(),
                 event.serialNumber(),
-                event.laboratoryId());
+                event.laboratoryId()
+        );
 
-        // TODO: En el futuro, inyectar ExternalComplianceService (del paquete acl)
-        // para disparar notificaciones push a los gerentes de calidad o bloquear
-        // automáticamente el uso del equipo en otros módulos.
-        // externalComplianceService.notifyCalibrationExpiration(event);
+        applicationEventPublisher.publishEvent(CalibrationExpiredIntegrationEvent.from(event));
     }
 }

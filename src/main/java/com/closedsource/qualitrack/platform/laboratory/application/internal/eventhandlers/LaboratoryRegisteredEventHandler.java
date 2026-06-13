@@ -1,37 +1,43 @@
 package com.closedsource.qualitrack.platform.laboratory.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.laboratory.domain.model.events.LaboratoryRegisteredEvent;
+import com.closedsource.qualitrack.platform.laboratory.interfaces.events.LaboratoryRegisteredIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
- * Application-layer event handler for {@link LaboratoryRegisteredEvent}.
- *
- * <p>Listens for laboratory registrations to perform side effects,
- * such as notifying external systems, reporting modules, or updating read models.</p>
+ * Handles internal LaboratoryRegisteredEvent events and publishes the corresponding integration event.
  */
 @Service
 @Slf4j
 public class LaboratoryRegisteredEventHandler {
 
+    private final ApplicationEventPublisher applicationEventPublisher;
+
     /**
-     * Default constructor.
+     * Creates a new LaboratoryRegisteredEventHandler.
+     *
+     * @param applicationEventPublisher Spring application event publisher
      */
-    public LaboratoryRegisteredEventHandler() {
+    public LaboratoryRegisteredEventHandler(ApplicationEventPublisher applicationEventPublisher) {
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     /**
-     * Handles the {@link LaboratoryRegisteredEvent}.
+     * Handles the internal laboratory registered domain event.
      *
-     * @param event the {@link LaboratoryRegisteredEvent} published by the laboratory aggregate
+     * @param event the internal laboratory registered domain event
      */
     @EventListener(LaboratoryRegisteredEvent.class)
     public void on(LaboratoryRegisteredEvent event) {
-        log.info("Laboratory registered successfully: ID='{}', Name='{}'. Ready for downstream integration.",
-                event.laboratoryId(), event.name());
+        log.info(
+                "Laboratory registered. laboratoryId={}, name={}",
+                event.laboratoryId(),
+                event.name()
+        );
 
-        // TODO: En el futuro, aquí puedes inyectar un OutboundService (ACL)
-        // para avisarle al módulo de Tracking (Equipment/Batch) que hay un nuevo laboratorio.
+        applicationEventPublisher.publishEvent(LaboratoryRegisteredIntegrationEvent.from(event));
     }
 }

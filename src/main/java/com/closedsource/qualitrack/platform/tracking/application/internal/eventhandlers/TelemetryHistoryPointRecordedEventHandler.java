@@ -1,31 +1,47 @@
 package com.closedsource.qualitrack.platform.tracking.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.tracking.domain.model.events.TelemetryHistoryPointRecordedEvent;
+import com.closedsource.qualitrack.platform.tracking.interfaces.events.TelemetryHistoryPointRecordedIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
- * Handles side effects triggered after a telemetry history point is recorded.
+ * Handles internal telemetry history point recorded events and publishes Tracking integration events.
  */
-@Slf4j
 @Service
+@Slf4j
 public class TelemetryHistoryPointRecordedEventHandler {
+
+    private final ApplicationEventPublisher eventPublisher;
+
     /**
-     * Handles the telemetry history point recorded domain event.
+     * Creates the handler with the Spring application event publisher.
      *
-     * @param event the telemetry history point recorded event
+     * @param eventPublisher Spring application event publisher
      */
-    @EventListener
+    public TelemetryHistoryPointRecordedEventHandler(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
+    /**
+     * Handles a telemetry history point recorded domain event.
+     *
+     * @param event the internal Tracking domain event
+     */
+    @EventListener(TelemetryHistoryPointRecordedEvent.class)
     public void on(TelemetryHistoryPointRecordedEvent event) {
         log.info(
-                "Telemetry history point recorded. historyPointId={}, equipmentId={}, parameterName={}, isAnomaly={}",
+                "Telemetry history point recorded: History Point ID='{}', Equipment ID='{}', Parameter='{}', Value='{}', Timestamp='{}', IsAnomaly='{}'.",
                 event.historyPointId(),
                 event.equipmentId(),
                 event.parameterName(),
+                event.recordedValue(),
+                event.timestamp(),
                 event.isAnomaly()
         );
 
-        // TODO: In the future, feed RA deviation trends with this telemetry point.
+        eventPublisher.publishEvent(TelemetryHistoryPointRecordedIntegrationEvent.from(event));
     }
 }

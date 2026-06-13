@@ -1,24 +1,31 @@
 package com.closedsource.qualitrack.platform.ra.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.ra.domain.model.events.AuditLogEntryRecordedEvent;
+import com.closedsource.qualitrack.platform.ra.interfaces.events.AuditLogEntryRecordedIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
  * Application-layer event handler for {@link AuditLogEntryRecordedEvent}.
  *
- * <p>Listens for audit log recording events to support traceability,
- * monitoring, or audit indexing side effects.</p>
+ * <p>Publishes the Reporting & Audit integration event after an audit log entry
+ * is recorded, exposing RA's published language to other bounded contexts.</p>
  */
 @Service
 @Slf4j
 public class AuditLogEntryRecordedEventHandler {
 
+    private final ApplicationEventPublisher eventPublisher;
+
     /**
-     * Default constructor.
+     * Creates the handler with the Spring application event publisher.
+     *
+     * @param eventPublisher Spring application event publisher
      */
-    public AuditLogEntryRecordedEventHandler() {
+    public AuditLogEntryRecordedEventHandler(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -38,6 +45,6 @@ public class AuditLogEntryRecordedEventHandler {
                 event.occurredAt()
         );
 
-        // TODO: In the future, stream audit events to external observability services.
+        eventPublisher.publishEvent(AuditLogEntryRecordedIntegrationEvent.from(event));
     }
 }

@@ -1,6 +1,6 @@
 package com.closedsource.qualitrack.platform.ca.application.internal.eventhandlers;
 
-import com.closedsource.qualitrack.platform.batch.domain.model.events.BatchRejectedEvent;
+import com.closedsource.qualitrack.platform.batch.interfaces.events.BatchRejectedIntegrationEvent;
 import com.closedsource.qualitrack.platform.ca.domain.model.entities.ComplianceEvent;
 import com.closedsource.qualitrack.platform.ca.domain.model.valueobjects.ComplianceEventType;
 import com.closedsource.qualitrack.platform.ca.domain.repositories.ComplianceEventRepository;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 
 /**
- * Handles batch rejection events by recording compliance audit events.
+ * Handles batch rejection integration events by recording compliance audit events.
  */
 @Service
 @Slf4j
@@ -19,13 +19,23 @@ public class BatchRejectedComplianceEventHandler {
 
     private final ComplianceEventRepository complianceEventRepository;
 
+    /**
+     * Creates a new BatchRejectedComplianceEventHandler.
+     *
+     * @param complianceEventRepository compliance event repository
+     */
     public BatchRejectedComplianceEventHandler(ComplianceEventRepository complianceEventRepository) {
         this.complianceEventRepository = complianceEventRepository;
     }
 
-    @EventListener(BatchRejectedEvent.class)
-    public void on(BatchRejectedEvent event) {
-        log.warn("CA received batch rejected event for batch ID '{}'.", event.batchId());
+    /**
+     * Handles the published BatchRejectedIntegrationEvent from the Batch bounded context.
+     *
+     * @param event the batch rejected integration event
+     */
+    @EventListener(BatchRejectedIntegrationEvent.class)
+    public void on(BatchRejectedIntegrationEvent event) {
+        log.warn("CA received batch rejected integration event for batch ID '{}'.", event.batchId());
 
         complianceEventRepository.save(new ComplianceEvent(
                 event.batchId(),

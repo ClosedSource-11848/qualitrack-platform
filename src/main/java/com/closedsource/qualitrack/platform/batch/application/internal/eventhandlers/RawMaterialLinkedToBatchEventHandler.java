@@ -1,42 +1,46 @@
 package com.closedsource.qualitrack.platform.batch.application.internal.eventhandlers;
 
 import com.closedsource.qualitrack.platform.batch.domain.model.events.RawMaterialLinkedToBatchEvent;
+import com.closedsource.qualitrack.platform.batch.interfaces.events.RawMaterialLinkedToBatchIntegrationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /**
- * Application-layer event handler for {@link RawMaterialLinkedToBatchEvent}.
- *
- * <p>Listens for raw material usage linkage events to support traceability,
- * inventory synchronization, and reporting.</p>
+ * Handles internal RawMaterialLinkedToBatchEvent events and publishes the corresponding integration event.
  */
-@Service
 @Slf4j
+@Service
 public class RawMaterialLinkedToBatchEventHandler {
 
+    private final ApplicationEventPublisher applicationEventPublisher;
+
     /**
-     * Default constructor.
+     * Creates a new RawMaterialLinkedToBatchEventHandler.
+     *
+     * @param applicationEventPublisher Spring application event publisher
      */
-    public RawMaterialLinkedToBatchEventHandler() {
+    public RawMaterialLinkedToBatchEventHandler(ApplicationEventPublisher applicationEventPublisher) {
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     /**
-     * Handles the {@link RawMaterialLinkedToBatchEvent}.
+     * Handles the internal raw material linked domain event.
      *
-     * @param event the {@link RawMaterialLinkedToBatchEvent} published after linking a raw material to a batch
+     * @param event the internal raw material linked domain event
      */
     @EventListener(RawMaterialLinkedToBatchEvent.class)
     public void on(RawMaterialLinkedToBatchEvent event) {
-        log.info("Raw material linked to batch: Usage ID='{}', Batch ID='{}', Material='{}' (ID: {}), Quantity='{} {}'.",
+        log.info(
+                "Raw material linked to batch. usageId={}, batchId={}, rawMaterialId={}, quantityUsed={}, unit={}",
                 event.usageId(),
                 event.batchId(),
-                event.rawMaterialName(),
                 event.rawMaterialId(),
                 event.quantityUsed(),
-                event.unit());
+                event.unit()
+        );
 
-        // TODO: En el futuro, inyectar un OutboundService (ACL)
-        // para sincronizar consumo de inventario o alimentar reportes de trazabilidad.
+        applicationEventPublisher.publishEvent(RawMaterialLinkedToBatchIntegrationEvent.from(event));
     }
 }
