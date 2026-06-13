@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 
 /**
- * ACL facade exposed by the Compliance & Alerts bounded context.
+ * ACL facade exposed by the Compliance and Alerts bounded context.
  *
  * <p>Provides a stable interface for other bounded contexts to interact with CA
  * without depending on CA internal application services or domain commands.</p>
@@ -18,6 +18,11 @@ public class ComplianceContextFacade {
 
     private final ComplianceEventRepository complianceEventRepository;
 
+    /**
+     * Creates a new ComplianceContextFacade.
+     *
+     * @param complianceEventRepository compliance event repository
+     */
     public ComplianceContextFacade(ComplianceEventRepository complianceEventRepository) {
         this.complianceEventRepository = complianceEventRepository;
     }
@@ -25,11 +30,11 @@ public class ComplianceContextFacade {
     /**
      * Records a raw material low stock compliance event.
      *
-     * @param rawMaterialId The raw material identifier.
-     * @param laboratoryId The laboratory identifier.
-     * @param materialName The raw material name.
-     * @param currentStock The current stock quantity.
-     * @param minimumThreshold The minimum required stock quantity.
+     * @param rawMaterialId the raw material identifier
+     * @param laboratoryId the laboratory identifier
+     * @param materialName the raw material name
+     * @param currentStock the current stock quantity
+     * @param minimumThreshold the minimum required stock quantity
      */
     public void recordRawMaterialLowStockEvent(
             Long rawMaterialId,
@@ -46,5 +51,24 @@ public class ComplianceContextFacade {
                 Instant.now().toString(),
                 null
         ));
+    }
+
+    /**
+     * Verifies whether a batch can be released according to compliance rules.
+     *
+     * <p>At this stage, the rule is intentionally conservative and simple:
+     * a batch can be released when there are no unresolved non-compliance events
+     * associated with that batch identifier.</p>
+     *
+     * @param batchId the batch identifier
+     * @return true when the batch can be released
+     */
+    public boolean canReleaseBatch(Long batchId) {
+        if (batchId == null || batchId <= 0) {
+            return false;
+        }
+
+        return complianceEventRepository.findAllByRelatedEntityId(batchId).stream()
+                .noneMatch(event -> !event.isResolved());
     }
 }
