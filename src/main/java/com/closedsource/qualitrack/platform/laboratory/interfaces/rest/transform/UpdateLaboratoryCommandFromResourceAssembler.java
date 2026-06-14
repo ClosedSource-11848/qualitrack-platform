@@ -15,13 +15,16 @@ public class UpdateLaboratoryCommandFromResourceAssembler {
      * @param resource The {@link UpdateLaboratoryResource} resource to convert.
      * @return The {@link UpdateLaboratoryCommand} command that results from the conversion.
      */
-    public static UpdateLaboratoryCommand toCommandFromResource(Long laboratoryId, UpdateLaboratoryResource resource) {
+    public static UpdateLaboratoryCommand toCommandFromResource(
+            Long laboratoryId,
+            UpdateLaboratoryResource resource
+    ) {
         return new UpdateLaboratoryCommand(
                 laboratoryId,
                 resource.name(),
-                resource.phone(),
                 resource.address(),
+                resource.phone(),
                 resource.applicableRegulations()
-                );
+        );
     }
 }
