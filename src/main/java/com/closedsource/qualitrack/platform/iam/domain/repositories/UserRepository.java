@@ -1,0 +1,26 @@
+package com.closedsource.qualitrack.platform.iam.domain.repositories;
+
+import com.closedsource.qualitrack.platform.iam.domain.model.aggregates.User;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * User repository port.
+ *
+ * <p>Defines persistence operations for IAM user aggregate roots.</p>
+ */
+public interface UserRepository {
+
+    Optional<User> findById(Long id);
+
+    Optional<User> findByUsername(String username);
+
+    List<User> findAll();
+
+    User save(User user);
+
+    boolean existsById(Long id);
+
+    boolean existsByUsername(String username);
+}
