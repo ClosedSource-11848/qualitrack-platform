@@ -16,7 +16,6 @@ import java.util.ArrayList;
 public final class LaboratoryPersistenceAssembler {
 
     private LaboratoryPersistenceAssembler() {
-
     }
 
     /**
@@ -50,6 +49,10 @@ public final class LaboratoryPersistenceAssembler {
 
         var entity = new LaboratoryPersistenceEntity();
 
+        if (domain.getId() != null) {
+            entity.setId(domain.getId());
+        }
+
         entity.setName(domain.getName().name());
         entity.setRuc(domain.getRuc());
         entity.setPhone(domain.getPhone());
@@ -59,7 +62,6 @@ public final class LaboratoryPersistenceAssembler {
         }
 
         entity.setStatus(domain.getStatus());
-
         entity.setAddress(domain.getAddress().getAddress());
 
         return entity;

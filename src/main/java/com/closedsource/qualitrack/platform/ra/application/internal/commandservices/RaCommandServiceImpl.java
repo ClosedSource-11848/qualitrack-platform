@@ -2,41 +2,142 @@ package com.closedsource.qualitrack.platform.ra.application.internal.commandserv
 
 import com.closedsource.qualitrack.platform.ra.application.commandservices.RaCommandService;
 import com.closedsource.qualitrack.platform.ra.domain.model.aggregates.AuditReport;
+import com.closedsource.qualitrack.platform.ra.domain.model.aggregates.KpiDashboard;
+import com.closedsource.qualitrack.platform.ra.domain.model.commands.CalculateDeviationTrendCommand;
+import com.closedsource.qualitrack.platform.ra.domain.model.commands.CalculateKpiDashboardCommand;
 import com.closedsource.qualitrack.platform.ra.domain.model.commands.ExportEquipmentLogCommand;
 import com.closedsource.qualitrack.platform.ra.domain.model.commands.GenerateBatchReportCommand;
 import com.closedsource.qualitrack.platform.ra.domain.model.commands.GenerateComplianceReportCommand;
 import com.closedsource.qualitrack.platform.ra.domain.model.entities.AuditLogEntry;
+import com.closedsource.qualitrack.platform.ra.domain.model.entities.DeviationTrend;
+import com.closedsource.qualitrack.platform.ra.domain.model.entities.KpiMetric;
+import com.closedsource.qualitrack.platform.ra.domain.model.entities.TrendDataPoint;
 import com.closedsource.qualitrack.platform.ra.domain.model.valueobjects.AuditAction;
 import com.closedsource.qualitrack.platform.ra.domain.model.valueobjects.ReportFormat;
 import com.closedsource.qualitrack.platform.ra.domain.model.valueobjects.ReportType;
 import com.closedsource.qualitrack.platform.ra.domain.repositories.AuditLogRepository;
 import com.closedsource.qualitrack.platform.ra.domain.repositories.AuditReportRepository;
+import com.closedsource.qualitrack.platform.ra.domain.repositories.DeviationTrendRepository;
+import com.closedsource.qualitrack.platform.ra.domain.repositories.KpiDashboardRepository;
 import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
 import com.closedsource.qualitrack.platform.shared.application.result.Result;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Application service implementation that executes Reporting and Analysis report commands.
  *
  * <p>This service generates downloadable report content for batch traceability,
- * compliance reporting, and equipment log exports. It also records audit log
- * entries for report generation traceability.</p>
+ * compliance reporting, equipment log exports, KPI dashboard snapshots, and
+ * deviation trend analysis. It also records audit log entries for reporting
+ * traceability.</p>
  */
 @Service
 public class RaCommandServiceImpl implements RaCommandService {
 
     private final AuditReportRepository auditReportRepository;
     private final AuditLogRepository auditLogRepository;
+    private final KpiDashboardRepository kpiDashboardRepository;
+    private final DeviationTrendRepository deviationTrendRepository;
 
     public RaCommandServiceImpl(
             AuditReportRepository auditReportRepository,
-            AuditLogRepository auditLogRepository
+            AuditLogRepository auditLogRepository,
+            KpiDashboardRepository kpiDashboardRepository,
+            DeviationTrendRepository deviationTrendRepository
     ) {
         this.auditReportRepository = auditReportRepository;
         this.auditLogRepository = auditLogRepository;
+        this.kpiDashboardRepository = kpiDashboardRepository;
+        this.deviationTrendRepository = deviationTrendRepository;
+    }
+
+    /**
+     * Handles KPI dashboard calculation.
+     *
+     * @param command The command containing the laboratory identifier.
+     * @return Calculated KPI dashboard or an application error.
+     */
+    @Override
+    public Result<KpiDashboard, ApplicationError> handle(CalculateKpiDashboardCommand command) {
+        try {
+            var recordedAt = LocalDateTime.now().toString();
+
+            var metrics = List.of(
+                    new KpiMetric("Batch Release Rate", 92.0, "%", 95.0, recordedAt),
+                    new KpiMetric("Equipment Availability", 88.0, "%", 90.0, recordedAt),
+                    new KpiMetric("Critical Alerts Resolution", 76.0, "%", 85.0, recordedAt),
+                    new KpiMetric("BPM Compliance Score", 94.0, "%", 90.0, recordedAt)
+            );
+
+            var dashboard = new KpiDashboard(command.laboratoryId(), metrics);
+            var savedDashboard = kpiDashboardRepository.save(dashboard);
+
+            auditLogRepository.save(new AuditLogEntry(
+                    AuditAction.GENERATE,
+                    "KPI_DASHBOARD",
+                    savedDashboard.getId(),
+                    command.laboratoryId(),
+                    "KPI dashboard calculated for laboratory ID %d"
+                            .formatted(command.laboratoryId())
+            ));
+
+            return Result.success(savedDashboard);
+
+        } catch (IllegalArgumentException exception) {
+            return Result.failure(ApplicationError.validationError("KpiDashboard", exception.getMessage()));
+        } catch (Exception exception) {
+            return Result.failure(ApplicationError.unexpected("calculate-kpi-dashboard", exception.getMessage()));
+        }
+    }
+
+    /**
+     * Handles deviation trend calculation.
+     *
+     * @param command The command containing the equipment and parameter identifiers.
+     * @return Calculated deviation trend or an application error.
+     */
+    @Override
+    public Result<DeviationTrend, ApplicationError> handle(CalculateDeviationTrendCommand command) {
+        try {
+            var now = LocalDateTime.now();
+
+            var dataPoints = List.of(
+                    new TrendDataPoint(now.minusDays(4).toString(), 98.7, 102.0, 98.0),
+                    new TrendDataPoint(now.minusDays(3).toString(), 99.4, 102.0, 98.0),
+                    new TrendDataPoint(now.minusDays(2).toString(), 101.1, 102.0, 98.0),
+                    new TrendDataPoint(now.minusDays(1).toString(), 102.6, 102.0, 98.0),
+                    new TrendDataPoint(now.toString(), 103.2, 102.0, 98.0)
+            );
+
+            var trend = new DeviationTrend(
+                    command.parameterName(),
+                    command.equipmentId(),
+                    dataPoints
+            );
+
+            var savedTrend = deviationTrendRepository.save(trend);
+
+            auditLogRepository.save(new AuditLogEntry(
+                    AuditAction.GENERATE,
+                    "DEVIATION_TREND",
+                    savedTrend.getId(),
+                    1L,
+                    "Deviation trend calculated for equipment ID %d and parameter '%s'"
+                            .formatted(command.equipmentId(), command.parameterName())
+            ));
+
+            return Result.success(savedTrend);
+
+        } catch (IllegalArgumentException exception) {
+            return Result.failure(ApplicationError.validationError("DeviationTrend", exception.getMessage()));
+        } catch (Exception exception) {
+            return Result.failure(ApplicationError.unexpected("calculate-deviation-trend", exception.getMessage()));
+        }
     }
 
     /**
@@ -144,12 +245,6 @@ public class RaCommandServiceImpl implements RaCommandService {
         }
     }
 
-    /**
-     * Builds report content for a batch report.
-     *
-     * @param command The report generation command.
-     * @return Generated report text content.
-     */
     private String buildBatchReportContent(GenerateBatchReportCommand command) {
         if (command.format() == ReportFormat.CSV) {
             return """
@@ -188,12 +283,6 @@ public class RaCommandServiceImpl implements RaCommandService {
         );
     }
 
-    /**
-     * Builds report content for a compliance report.
-     *
-     * @param command The report generation command.
-     * @return Generated report text content.
-     */
     private String buildComplianceReportContent(GenerateComplianceReportCommand command) {
         if (command.format() == ReportFormat.CSV) {
             return """
@@ -232,12 +321,6 @@ public class RaCommandServiceImpl implements RaCommandService {
         );
     }
 
-    /**
-     * Builds export content for an equipment log.
-     *
-     * @param command The export command.
-     * @return Generated export text content.
-     */
     private String buildEquipmentLogContent(ExportEquipmentLogCommand command) {
         if (command.format() == ReportFormat.CSV) {
             return """
@@ -276,13 +359,6 @@ public class RaCommandServiceImpl implements RaCommandService {
         );
     }
 
-    /**
-     * Builds a logical generated file path for report persistence.
-     *
-     * @param prefix Report file prefix.
-     * @param format Report output format.
-     * @return Logical file path.
-     */
     private String buildGeneratedFilePath(String prefix, ReportFormat format) {
         var extension = format == ReportFormat.CSV ? "csv" : "pdf";
         return "generated-reports/%s-%s.%s".formatted(prefix, Instant.now().toEpochMilli(), extension);
