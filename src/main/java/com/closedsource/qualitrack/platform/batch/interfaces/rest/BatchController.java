@@ -90,6 +90,26 @@ public class BatchController {
         return ResponseEntity.ok(BatchResourceFromEntityAssembler.toResourceFromEntity(batch.get()));
     }
 
+    @GetMapping(params = "labId")
+    @Operation(summary = "Get batches by laboratory", description = "Retrieves production batches by laboratory ID.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Batches retrieved successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid laboratory ID")
+    })
+    public ResponseEntity<List<BatchResource>> getBatchesByLabId(
+            @RequestParam
+            @Parameter(description = "Laboratory numeric identifier", example = "1", required = true)
+            Long labId
+    ) {
+        var batches = batchQueryService.handle(new GetBatchesByLabIdQuery(labId));
+
+        var resources = batches.stream()
+                .map(BatchResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+
+        return ResponseEntity.ok(resources);
+    }
+
     @GetMapping(params = "status")
     @Operation(summary = "Get batches by status", description = "Retrieves production batches by lifecycle status.")
     @ApiResponses(value = {
