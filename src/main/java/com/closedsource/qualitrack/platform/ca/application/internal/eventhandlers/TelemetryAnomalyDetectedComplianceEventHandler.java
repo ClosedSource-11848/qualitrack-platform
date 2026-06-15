@@ -17,6 +17,9 @@ import java.time.Instant;
 @Slf4j
 public class TelemetryAnomalyDetectedComplianceEventHandler {
 
+    private static final Double DEFAULT_THRESHOLD_VALUE = 30.0;
+    private static final String DEFAULT_UNIT = "telemetry";
+
     private final CaCommandService caCommandService;
 
     public TelemetryAnomalyDetectedComplianceEventHandler(CaCommandService caCommandService) {
@@ -39,8 +42,8 @@ public class TelemetryAnomalyDetectedComplianceEventHandler {
                 null,
                 event.parameterName(),
                 event.recordedValue(),
-                null,
-                "telemetry",
+                DEFAULT_THRESHOLD_VALUE,
+                DEFAULT_UNIT,
                 Instant.now().toString(),
                 AlertSeverity.CRITICAL
         ));
