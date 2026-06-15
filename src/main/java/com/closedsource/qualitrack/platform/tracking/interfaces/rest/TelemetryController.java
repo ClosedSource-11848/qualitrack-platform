@@ -2,9 +2,11 @@ package com.closedsource.qualitrack.platform.tracking.interfaces.rest;
 
 import com.closedsource.qualitrack.platform.tracking.application.commandservices.TrackingCommandService;
 import com.closedsource.qualitrack.platform.tracking.application.queryservices.TrackingQueryService;
+import com.closedsource.qualitrack.platform.tracking.domain.model.entities.EquipmentTelemetryStatus;
 import com.closedsource.qualitrack.platform.tracking.domain.model.queries.GetEquipmentTelemetryStatusByEquipmentIdQuery;
 import com.closedsource.qualitrack.platform.tracking.domain.model.queries.GetLatestMeasurementsQuery;
 import com.closedsource.qualitrack.platform.tracking.domain.model.queries.GetTelemetryHistoryQuery;
+import com.closedsource.qualitrack.platform.tracking.domain.model.valueobjects.TelemetryStatus;
 import com.closedsource.qualitrack.platform.tracking.interfaces.rest.resources.EquipmentTelemetryStatusResource;
 import com.closedsource.qualitrack.platform.tracking.interfaces.rest.resources.MeasurementResource;
 import com.closedsource.qualitrack.platform.tracking.interfaces.rest.resources.RecordMeasurementResource;
@@ -110,12 +112,15 @@ public class TelemetryController {
     ) {
         var status = trackingQueryService.handle(
                 new GetEquipmentTelemetryStatusByEquipmentIdQuery(equipmentId)
-        );
-
-        if (status.isEmpty()) return ResponseEntity.notFound().build();
+        ).orElseGet(() -> EquipmentTelemetryStatus.update(
+                equipmentId,
+                false,
+                TelemetryStatus.OFFLINE,
+                null
+        ));
 
         return ResponseEntity.ok(
-                EquipmentTelemetryStatusResourceFromEntityAssembler.toResourceFromEntity(status.get())
+                EquipmentTelemetryStatusResourceFromEntityAssembler.toResourceFromEntity(status)
         );
     }
 

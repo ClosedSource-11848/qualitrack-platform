@@ -12,7 +12,7 @@ import com.closedsource.qualitrack.platform.shared.application.result.Result;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDate;
 
 /**
  * Application service implementation that executes raw material usage commands.
@@ -63,7 +63,7 @@ public class RawMaterialUsageCommandServiceImpl implements RawMaterialUsageComma
                     command,
                     rawMaterial.getName(),
                     rawMaterial.getUnit(),
-                    OffsetDateTime.now().toString()
+                    LocalDate.now().toString()
             );
 
             var savedUsage = rawMaterialUsageRepository.save(usage);

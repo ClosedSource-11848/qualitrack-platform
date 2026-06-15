@@ -2,6 +2,7 @@ package com.closedsource.qualitrack.platform.ca.interfaces.rest;
 
 import com.closedsource.qualitrack.platform.ca.application.commandservices.CaCommandService;
 import com.closedsource.qualitrack.platform.ca.application.queryservices.CaQueryService;
+import com.closedsource.qualitrack.platform.ca.domain.model.entities.NotificationPreference;
 import com.closedsource.qualitrack.platform.ca.domain.model.queries.GetNotificationPreferenceByUserIdQuery;
 import com.closedsource.qualitrack.platform.ca.interfaces.rest.resources.NotificationPreferenceResource;
 import com.closedsource.qualitrack.platform.ca.interfaces.rest.resources.UpdateNotificationPreferenceResource;
@@ -33,12 +34,11 @@ public class NotificationPreferenceController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<NotificationPreferenceResource> getPreferencesByUserId(@PathVariable Long userId) {
-        var preference = caQueryService.handle(new GetNotificationPreferenceByUserIdQuery(userId));
-
-        if (preference.isEmpty()) return ResponseEntity.notFound().build();
+        var preference = caQueryService.handle(new GetNotificationPreferenceByUserIdQuery(userId))
+                .orElseGet(() -> new NotificationPreference(userId));
 
         return ResponseEntity.ok(
-                NotificationPreferenceResourceFromEntityAssembler.toResourceFromEntity(preference.get())
+                NotificationPreferenceResourceFromEntityAssembler.toResourceFromEntity(preference)
         );
     }
 
