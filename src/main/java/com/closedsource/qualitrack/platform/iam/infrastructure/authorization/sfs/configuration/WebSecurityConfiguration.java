@@ -68,7 +68,11 @@ public class WebSecurityConfiguration {
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         var configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:4200",
+                "https://closedsource-qualitrack.web.app",
+                "https://closedsource-qualitrack.firebaseapp.com"
+        ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization"));
