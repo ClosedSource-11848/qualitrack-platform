@@ -1,87 +1,51 @@
-@startuml compliance-database-diagram
-title QualiTrack – Compliance & Alerting Database
+@startuml ca-database-diagram
+
+title QualiTrack - Compliance and Alerts Database Diagram
 
 hide methods
 hide stereotypes
 
-entity "compliance_events" {
-  * <u>id</u> : VARCHAR(36)
+entity "deviation_alerts" {
+  * id : BIGINT PK
   --
-  measurement_id : VARCHAR(36) FK NOT NULL
-  equipment_id : VARCHAR(36) FK NOT NULL
-  batch_id : VARCHAR(36) FK
-  result : ENUM('CONFORM','WARNING',
-    'DEVIATION',
-    'CRITICAL_DEVIATION') NOT NULL
-  evaluated_at : DATETIME NOT NULL
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME NOT NULL
+  equipment_id : BIGINT NOT NULL
+  batch_id : BIGINT
+  parameter_name : VARCHAR(100) NOT NULL
+  recorded_value : DOUBLE NOT NULL
+  threshold_value : DOUBLE NOT NULL
+  unit : VARCHAR(20) NOT NULL
+  timestamp : VARCHAR(30) NOT NULL
+  severity : VARCHAR(50) NOT NULL
+  status : VARCHAR(50) NOT NULL
+  acknowledged_by : BIGINT
+  resolved_by : BIGINT
+  resolution_notes : VARCHAR(500)
 }
 
-entity "deviation_alerts" {
-  * <u>id</u> : VARCHAR(36)
+entity "compliance_events" {
+  * id : BIGINT PK
   --
-  compliance_event_id : VARCHAR(36) FK NOT NULL
-  equipment_id : VARCHAR(36) FK NOT NULL
-  batch_id : VARCHAR(36) FK
-  variable : ENUM('TEMPERATURE','PRESSURE','PH',
-    'HUMIDITY','FLOW_RATE') NOT NULL
-  detected_value : DECIMAL(10,4) NOT NULL
-  min_allowed : DECIMAL(10,4) NOT NULL
-  max_allowed : DECIMAL(10,4) NOT NULL
-  severity : ENUM('WARNING','CRITICAL',
-    'CATASTROPHIC') NOT NULL
-  status : ENUM('ACTIVE','ACKNOWLEDGED',
-    'RESOLVED','ESCALATED') DEFAULT 'ACTIVE'
-  triggered_at : DATETIME NOT NULL
-  resolved_at : DATETIME
-  resolved_by : VARCHAR(36)
-  resolution_notes : TEXT
   created_at : DATETIME NOT NULL
+  updated_at : DATETIME NOT NULL
+  related_entity_id : BIGINT NOT NULL
+  event_type : VARCHAR(100) NOT NULL
+  description : VARCHAR(1000) NOT NULL
+  timestamp : VARCHAR(30) NOT NULL
+  resolved_by : BIGINT
 }
 
 entity "notification_preferences" {
-  * <u>user_id</u> : VARCHAR(36)
+  * id : BIGINT PK
   --
-  email_enabled : BOOLEAN DEFAULT TRUE
-  web_push_enabled : BOOLEAN DEFAULT TRUE
-  sms_enabled : BOOLEAN DEFAULT FALSE
+  created_at : DATETIME NOT NULL
   updated_at : DATETIME NOT NULL
+  user_id : BIGINT NOT NULL UNIQUE
+  email_enabled : BOOLEAN NOT NULL
+  sms_enabled : BOOLEAN NOT NULL
+  in_app_enabled : BOOLEAN NOT NULL
+  minimum_severity : VARCHAR(50) NOT NULL
 }
-
-entity "alert_notification_logs" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  alert_id : VARCHAR(36) FK NOT NULL
-  user_id : VARCHAR(36) FK NOT NULL
-  channel : ENUM('EMAIL','WEB_PUSH','SMS') NOT NULL
-  sent_at : DATETIME NOT NULL
-  delivered : BOOLEAN DEFAULT FALSE
-  error_message : VARCHAR(500)
-}
-
-compliance_events ||--o{ deviation_alerts : "genera"
-deviation_alerts ||--o{ alert_notification_logs : "notifica mediante"
-
-note right of compliance_events
-  Índices:
-  - IDX_compliance_measurement_id (measurement_id)
-  - IDX_compliance_equipment_id (equipment_id)
-  - IDX_compliance_batch_id (batch_id)
-  - IDX_compliance_result (result)
-  - IDX_compliance_evaluated_at (evaluated_at)
-end note
-
-note right of deviation_alerts
-  Índices:
-  - IDX_alerts_compliance_event_id (compliance_event_id)
-  - IDX_alerts_equipment_id (equipment_id)
-  - IDX_alerts_batch_id (batch_id)
-  - IDX_alerts_status (status)
-  - IDX_alerts_severity (severity)
-  - IDX_alerts_triggered_at (triggered_at)
-end note
-
-note right of notification_preferences
-  PK: user_id (uno por usuario)
-end note
 
 @enduml

@@ -1,74 +1,60 @@
-@startuml reporting-backend-diagram
-title QualiTrack – Reporting & Audit Backend
+@startuml ra-backend-diagram
 
-package "domain" {
+title QualiTrack - Reporting and Analysis Backend Class Diagram
 
-  abstract class AuditableEntity {
-    +createdAt: LocalDateTime
-    +updatedAt: LocalDateTime
-    +createdBy: String
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+package "shared" <<External>> {
+  abstract class AbstractDomainAggregateRoot
+  abstract class AuditableAbstractPersistenceEntity
+  class ApplicationError
+  class Result
+  class ResponseEntityAssembler
+  class ErrorResponseAssembler
+}
+
+package "spring" <<External>> {
+  interface JpaRepository
+  interface AttributeConverter
+}
+
+package "external bounded contexts" <<External>> {
+  interface BatchRepository
+  interface DeviationAlertRepository
+  interface EquipmentRepository
+  interface LaboratoryContextFacade
+}
+
+package "ra.domain.model.valueobjects" {
+  enum AuditAction {
+    CREATE
+    UPDATE
+    DELETE
+    RELEASE
+    REJECT
+    APPROVE
+    REGISTER
+    REMOVE
+    EXPORT
+    GENERATE
+    LOGIN
+    LOGOUT
+    SYSTEM
   }
 
-  class AuditReport {
-    -id: ReportId
-    -labId: LabId
-    -batchId: BatchId
-    -reportType: ReportType
-    -generatedBy: UserId
-    -generatedAt: LocalDateTime
-    -filePath: String
-    -checksum: String
-    +generate(labId: LabId, batchId: BatchId, generatedBy: UserId): AuditReport
-    +setFilePath(filePath: String): void
-    +computeChecksum(content: byte[]): String
-    +isImmutable(): boolean
+  enum KpiMetricStatus {
+    ON_TRACK
+    AT_RISK
+    CRITICAL
+    UNKNOWN
   }
 
-  class ComplianceReport {
-    -id: ReportId
-    -labId: LabId
-    -dateRange: DateRange
-    -totalBatches: int
-    -conformBatches: int
-    -deviationCount: int
-    -compliancePercentage: double
-    -generatedBy: UserId
-    -generatedAt: LocalDateTime
-    +generate(labId: LabId, dateRange: DateRange): ComplianceReport
-    +computeCompliancePercentage(): double
-  }
-
-  class KpiMetric {
-    -name: String
-    -value: double
-    -unit: String
-    -trend: Trend
-    -comparedToPreviousPeriod: double
-    -labId: LabId
-    -calculatedAt: LocalDateTime
-    +of(name: String, value: double, unit: String): KpiMetric
-    +computeTrend(previousValue: double): Trend
-  }
-
-  class DeviationTrend {
-    -equipmentId: EquipmentId
-    -equipmentName: String
-    -variable: String
-    -period: String
-    -deviationCount: int
-    +of(equipmentId: EquipmentId, variable: String, period: String): DeviationTrend
-  }
-
-  class AuditLogEntry {
-    -id: AuditLogId
-    -userId: UserId
-    -userName: String
-    -action: String
-    -entity: String
-    -entityId: String
-    -details: String
-    -occurredAt: LocalDateTime
-    +record(userId: UserId, action: String, entity: String, entityId: String): AuditLogEntry
+  enum ReportFormat {
+    PDF
+    CSV
   }
 
   enum ReportType {
@@ -78,210 +64,497 @@ package "domain" {
     KPI_SUMMARY
   }
 
-  enum Trend {
-    IMPROVING
+  enum TrendDirection {
+    INCREASING
+    DECREASING
     STABLE
-    WORSENING
   }
 }
 
-package "domain.valueobjects" {
+package "ra.domain.model.commands" {
+  class CalculateKpiDashboardCommand <<record>>
+  class CalculateDeviationTrendCommand <<record>>
+  class GenerateBatchReportCommand <<record>>
+  class GenerateComplianceReportCommand <<record>>
+  class ExportEquipmentLogCommand <<record>>
+  class RecordAuditLogEntryCommand <<record>>
+}
 
-  class ReportId {
-    -value: String
-    +of(value: String): ReportId
-    +toString(): String
+package "ra.domain.model.queries" {
+  class GetKpiDashboardByLaboratoryIdQuery <<record>>
+  class GetDeviationTrendsByEquipmentIdQuery <<record>>
+  class GetAuditLogQuery <<record>>
+  class GetAuditReportByIdQuery <<record>>
+  class GetAuditReportsByLaboratoryIdQuery <<record>>
+  class GetAuditReportsByBatchIdQuery <<record>>
+  class GetAuditReportsByEquipmentIdQuery <<record>>
+}
+
+package "ra.domain.model.aggregates" {
+  class AuditReport {
+    - id: Long
+    - laboratoryId: Long
+    - batchId: Long
+    - equipmentId: Long
+    - generatedBy: Long
+    - generatedByName: String
+    - reportType: ReportType
+    - dateRangeFrom: String
+    - dateRangeTo: String
+    - filePath: String
+    - checksum: String
+    - generatedAt: String
+    + computeChecksum(content: byte[]): String
+    + isImmutable(): boolean
+    + isBatchReport(): boolean
+    + isEquipmentReport(): boolean
   }
 
-  class AuditLogId {
-    -value: String
-    +of(value: String): AuditLogId
-    +toString(): String
-  }
-
-  class LabId {
-    -value: String
-    +of(value: String): LabId
-    +toString(): String
-  }
-
-  class BatchId {
-    -value: String
-    +of(value: String): BatchId
-    +toString(): String
-  }
-
-  class EquipmentId {
-    -value: String
-    +of(value: String): EquipmentId
-    +toString(): String
-  }
-
-  class UserId {
-    -value: String
-    +of(value: String): UserId
-    +toString(): String
-  }
-
-  class DateRange {
-    -from: LocalDateTime
-    -to: LocalDateTime
-    +of(from: LocalDateTime, to: LocalDateTime): DateRange
-    +isValid(): boolean
-    +getDurationDays(): long
+  class KpiDashboard {
+    - id: Long
+    - laboratoryId: Long
+    - timestamp: String
+    - overallHealthScore: Double
+    - metrics: List<KpiMetric>
+    + hasCriticalMetrics(): boolean
+    + hasAtRiskMetrics(): boolean
   }
 }
 
-package "domain.repositories" {
+package "ra.domain.model.entities" {
+  class AuditLogEntry {
+    - id: Long
+    - action: AuditAction
+    - entityType: String
+    - entityId: Long
+    - performedBy: Long
+    - timestamp: String
+    - details: String
+  }
+
+  class DeviationTrend {
+    - id: Long
+    - parameterName: String
+    - equipmentId: Long
+    - trendDirection: TrendDirection
+    - dataPoints: List<TrendDataPoint>
+  }
+
+  class KpiMetric {
+    - id: Long
+    - name: String
+    - value: Double
+    - unit: String
+    - targetValue: Double
+    - status: KpiMetricStatus
+    - recordedAt: String
+  }
+
+  class TrendDataPoint {
+    - timestamp: String
+    - recordedValue: Double
+    - upperThreshold: Double
+    - lowerThreshold: Double
+    + isDeviation(): boolean
+  }
+}
+
+AuditReport --|> AbstractDomainAggregateRoot
+KpiDashboard --|> AbstractDomainAggregateRoot
+
+AuditReport --> ReportType
+KpiDashboard *-- KpiMetric
+KpiMetric --> KpiMetricStatus
+AuditLogEntry --> AuditAction
+DeviationTrend --> TrendDirection
+DeviationTrend *-- TrendDataPoint
+
+GenerateBatchReportCommand --> ReportFormat
+GenerateComplianceReportCommand --> ReportFormat
+ExportEquipmentLogCommand --> ReportFormat
+RecordAuditLogEntryCommand --> AuditAction
+
+package "ra.domain.model.events" {
+  class AuditLogEntryRecordedEvent <<record>>
+  class AuditReportGeneratedEvent <<record>>
+  class DeviationTrendCalculatedEvent <<record>>
+  class KpiDashboardCalculatedEvent <<record>>
+}
+
+AuditLogEntryRecordedEvent --> AuditAction
+AuditReportGeneratedEvent --> ReportType
+DeviationTrendCalculatedEvent --> TrendDirection
+
+package "ra.domain.repositories" {
+  interface AuditLogRepository {
+    + findById(id: Long): Optional<AuditLogEntry>
+    + findAll(): List<AuditLogEntry>
+    + findAllByEquipmentId(equipmentId: Long): List<AuditLogEntry>
+    + findAllByBatchId(batchId: Long): List<AuditLogEntry>
+    + findAllByPerformedBy(performedBy: Long): List<AuditLogEntry>
+    + findAllByAction(action: AuditAction): List<AuditLogEntry>
+    + findAllByDateRange(dateFrom: String, dateTo: String): List<AuditLogEntry>
+    + save(auditLogEntry: AuditLogEntry): AuditLogEntry
+    + existsById(id: Long): boolean
+  }
 
   interface AuditReportRepository {
-    +findById(id: ReportId): Optional<AuditReport>
-    +findByBatchId(batchId: BatchId): List<AuditReport>
-    +findByLabId(labId: LabId): List<AuditReport>
-    +save(report: AuditReport): AuditReport
+    + findById(id: Long): Optional<AuditReport>
+    + findAllByLaboratoryId(laboratoryId: Long): List<AuditReport>
+    + findAllByBatchId(batchId: Long): List<AuditReport>
+    + findAllByEquipmentId(equipmentId: Long): List<AuditReport>
+    + findAllByReportType(reportType: ReportType): List<AuditReport>
+    + save(auditReport: AuditReport): AuditReport
+    + existsById(id: Long): boolean
   }
 
-  interface AuditLogRepository {
-    +findByLabId(labId: LabId): List<AuditLogEntry>
-    +findByUserId(userId: UserId): List<AuditLogEntry>
-    +findByDateRange(labId: LabId, range: DateRange): List<AuditLogEntry>
-    +save(entry: AuditLogEntry): AuditLogEntry
-  }
-}
-
-package "application" {
-
-  class GenerateBatchReportCommandHandler {
-    -auditReportRepository: AuditReportRepository
-    -batchDataProvider: BatchDataProvider
-    -pdfGenerationService: PdfGenerationService
-    +handle(command: GenerateBatchReportCommand): byte[]
-    -buildBatchReportContent(batch: BatchData): ReportContent
-    -ensureImmutability(content: byte[]): String
+  interface DeviationTrendRepository {
+    + findById(id: Long): Optional<DeviationTrend>
+    + findAllByEquipmentId(equipmentId: Long): List<DeviationTrend>
+    + findAllByEquipmentIdAndParameterName(equipmentId: Long, parameterName: String): List<DeviationTrend>
+    + save(deviationTrend: DeviationTrend): DeviationTrend
+    + existsById(id: Long): boolean
   }
 
-  class GenerateComplianceReportCommandHandler {
-    -complianceDataProvider: ComplianceDataProvider
-    -pdfGenerationService: PdfGenerationService
-    +handle(command: GenerateComplianceReportCommand): byte[]
-    -buildComplianceSummary(labId: LabId, range: DateRange): ComplianceReport
-  }
-
-  class ExportEquipmentLogCommandHandler {
-    -measurementDataProvider: MeasurementDataProvider
-    -pdfGenerationService: PdfGenerationService
-    +handle(command: ExportEquipmentLogCommand): byte[]
-  }
-
-  class GetKpiDashboardQueryHandler {
-    -batchDataProvider: BatchDataProvider
-    -complianceDataProvider: ComplianceDataProvider
-    -measurementDataProvider: MeasurementDataProvider
-    +handle(query: GetKpiDashboardQuery): KpiDashboardData
-    -computeConformBatchesKpi(labId: LabId): KpiMetric
-    -computeDeviationsKpi(labId: LabId): KpiMetric
-    -computeAvgReleaseTimeKpi(labId: LabId): KpiMetric
-  }
-
-  class GetDeviationTrendsQueryHandler {
-    -complianceDataProvider: ComplianceDataProvider
-    +handle(query: GetDeviationTrendsQuery): List<DeviationTrend>
-  }
-
-  class GetAuditLogQueryHandler {
-    -auditLogRepository: AuditLogRepository
-    +handle(query: GetAuditLogQuery): List<AuditLogEntry>
-  }
-
-  interface PdfGenerationService {
-    +generate(content: ReportContent): byte[]
-    +generateImmutable(content: ReportContent): byte[]
-  }
-
-  interface BatchDataProvider {
-    +getBatchWithHistory(batchId: BatchId): BatchData
-    +getBatchesByLabAndPeriod(labId: LabId, range: DateRange): List<BatchData>
-  }
-
-  interface ComplianceDataProvider {
-    +getDeviationsByLabAndPeriod(labId: LabId, range: DateRange): List<DeviationData>
-    +getDeviationTrends(labId: LabId, range: DateRange): List<DeviationTrend>
-  }
-
-  interface MeasurementDataProvider {
-    +getMeasurementsByEquipmentAndPeriod(equipmentId: EquipmentId, range: DateRange): List<MeasurementData>
+  interface KpiDashboardRepository {
+    + findById(id: Long): Optional<KpiDashboard>
+    + findLatestByLaboratoryId(laboratoryId: Long): Optional<KpiDashboard>
+    + findAllByLaboratoryId(laboratoryId: Long): List<KpiDashboard>
+    + save(dashboard: KpiDashboard): KpiDashboard
+    + existsById(id: Long): boolean
   }
 }
 
-package "interfaces" {
+AuditLogRepository --> AuditLogEntry
+AuditReportRepository --> AuditReport
+DeviationTrendRepository --> DeviationTrend
+KpiDashboardRepository --> KpiDashboard
 
-  class ReportController {
-    -generateBatchReportHandler: GenerateBatchReportCommandHandler
-    -generateComplianceReportHandler: GenerateComplianceReportCommandHandler
-    -exportEquipmentLogHandler: ExportEquipmentLogCommandHandler
-    +generateBatchReport(labId: String, batchId: String): ResponseEntity<byte[]>
-    +generateComplianceReport(labId: String, from: String, to: String): ResponseEntity<byte[]>
-    +exportEquipmentLog(labId: String, equipmentId: String, from: String, to: String): ResponseEntity<byte[]>
+package "ra.domain.exceptions" {
+  class AuditLogEntryNotFoundException
+  class AuditReportNotFoundException
+  class DeviationTrendNotFoundException
+  class DeviationTrendsNotFoundForEquipmentException
+  class ImmutableAuditReportException
+  class InvalidReportDateRangeException
+  class KpiDashboardNotFoundException
+  class ReportGenerationException
+}
+
+package "ra.application.commandservices" {
+  interface RaCommandService {
+    + handle(command: CalculateKpiDashboardCommand): Result<KpiDashboard, ApplicationError>
+    + handle(command: CalculateDeviationTrendCommand): Result<DeviationTrend, ApplicationError>
+    + handle(command: GenerateBatchReportCommand): Result<byte[], ApplicationError>
+    + handle(command: GenerateComplianceReportCommand): Result<byte[], ApplicationError>
+    + handle(command: ExportEquipmentLogCommand): Result<byte[], ApplicationError>
   }
 
-  class AnalyticsController {
-    -getKpiHandler: GetKpiDashboardQueryHandler
-    -getTrendsHandler: GetDeviationTrendsQueryHandler
-    +getKpiDashboard(labId: String): ResponseEntity<KpiDashboardResource>
-    +getDeviationTrends(labId: String, from: String, to: String): ResponseEntity<List<DeviationTrendResource>>
-  }
-
-  class AuditLogController {
-    -getAuditLogHandler: GetAuditLogQueryHandler
-    +getAuditLog(labId: String, from: String, to: String): ResponseEntity<List<AuditLogResource>>
-  }
-
-  class KpiDashboardResource {
-    +conformBatchesPercentage: double
-    +totalDeviationsThisMonth: int
-    +averageBatchReleaseTimeMinutes: double
-    +lowStockMaterialsCount: int
-    +equipmentWithExpiredCalibration: int
-    +kpis: List<KpiMetricResource>
+  interface AuditLogCommandService {
+    + handle(command: RecordAuditLogEntryCommand): Result<AuditLogEntry, ApplicationError>
   }
 }
 
-AuditReport --|> AuditableEntity
-AuditLogEntry --|> AuditableEntity
+package "ra.application.queryservices" {
+  interface RaQueryService {
+    + handle(query: GetKpiDashboardByLaboratoryIdQuery): Optional<KpiDashboard>
+    + handle(query: GetDeviationTrendsByEquipmentIdQuery): List<DeviationTrend>
+    + handle(query: GetAuditLogQuery): List<AuditLogEntry>
+    + handle(query: GetAuditReportByIdQuery): Optional<AuditReport>
+    + handle(query: GetAuditReportsByLaboratoryIdQuery): List<AuditReport>
+    + handle(query: GetAuditReportsByBatchIdQuery): List<AuditReport>
+    + handle(query: GetAuditReportsByEquipmentIdQuery): List<AuditReport>
+  }
+}
 
-AuditReport --> ReportId
-AuditReport --> LabId
-AuditReport --> BatchId
-AuditReport --> ReportType
-AuditReport --> UserId
-ComplianceReport --> ReportId
-ComplianceReport --> LabId
-ComplianceReport --> DateRange
-ComplianceReport --> UserId
-KpiMetric --> LabId
-KpiMetric --> Trend
-DeviationTrend --> EquipmentId
-AuditLogEntry --> AuditLogId
-AuditLogEntry --> UserId
+RaCommandService ..> Result
+RaCommandService ..> ApplicationError
+AuditLogCommandService ..> Result
+AuditLogCommandService ..> ApplicationError
 
-GenerateBatchReportCommandHandler --> AuditReportRepository
-GenerateBatchReportCommandHandler --> BatchDataProvider
-GenerateBatchReportCommandHandler --> PdfGenerationService
-GenerateComplianceReportCommandHandler --> ComplianceDataProvider
-GenerateComplianceReportCommandHandler --> PdfGenerationService
-ExportEquipmentLogCommandHandler --> MeasurementDataProvider
-ExportEquipmentLogCommandHandler --> PdfGenerationService
-GetKpiDashboardQueryHandler --> BatchDataProvider
-GetKpiDashboardQueryHandler --> ComplianceDataProvider
-GetKpiDashboardQueryHandler --> MeasurementDataProvider
-GetDeviationTrendsQueryHandler --> ComplianceDataProvider
-GetAuditLogQueryHandler --> AuditLogRepository
+package "ra.application.internal.commandservices" {
+  class RaCommandServiceImpl
+  class AuditLogCommandServiceImpl
+}
 
-ReportController --> GenerateBatchReportCommandHandler
-ReportController --> GenerateComplianceReportCommandHandler
-ReportController --> ExportEquipmentLogCommandHandler
-AnalyticsController --> GetKpiDashboardQueryHandler
-AnalyticsController --> GetDeviationTrendsQueryHandler
-AuditLogController --> GetAuditLogQueryHandler
+RaCommandServiceImpl ..|> RaCommandService
+RaCommandServiceImpl --> AuditReportRepository
+RaCommandServiceImpl --> AuditLogRepository
+RaCommandServiceImpl --> KpiDashboardRepository
+RaCommandServiceImpl --> DeviationTrendRepository
+
+AuditLogCommandServiceImpl ..|> AuditLogCommandService
+AuditLogCommandServiceImpl --> AuditLogRepository
+
+package "ra.application.internal.queryservices" {
+  class RaQueryServiceImpl
+}
+
+RaQueryServiceImpl ..|> RaQueryService
+RaQueryServiceImpl --> KpiDashboardRepository
+RaQueryServiceImpl --> DeviationTrendRepository
+RaQueryServiceImpl --> AuditLogRepository
+RaQueryServiceImpl --> AuditReportRepository
+
+package "ra.application.internal.outboundservices.acl" {
+  class RaExternalBatchService {
+    + existsBatchById(batchId: Long): boolean
+    + countBatchesByLaboratoryId(laboratoryId: Long): long
+    + countReleasedBatchesByLaboratoryId(laboratoryId: Long): long
+    + countRejectedBatchesByLaboratoryId(laboratoryId: Long): long
+  }
+
+  class RaExternalComplianceService {
+    + countAllDeviationAlerts(): long
+    + countUnresolvedDeviationAlerts(): long
+    + countCriticalDeviationAlerts(): long
+    + countDeviationAlertsByEquipmentId(equipmentId: Long): long
+    + countUnresolvedDeviationAlertsByEquipmentId(equipmentId: Long): long
+  }
+
+  class RaExternalEquipmentService {
+    + existsEquipmentById(equipmentId: Long): boolean
+    + countEquipmentByLaboratoryId(laboratoryId: Long): long
+    + countEquipmentRequiringAttentionByLaboratoryId(laboratoryId: Long): long
+  }
+
+  class RaExternalLaboratoryService {
+    + existsLaboratoryById(laboratoryId: Long): boolean
+  }
+}
+
+RaExternalBatchService --> BatchRepository
+RaExternalComplianceService --> DeviationAlertRepository
+RaExternalEquipmentService --> EquipmentRepository
+RaExternalLaboratoryService --> LaboratoryContextFacade
+
+package "ra.application.internal.eventhandlers" {
+  class AuditLogEntryRecordedEventHandler
+  class AuditReportGeneratedEventHandler
+  class BatchAuditEventHandler
+  class CaAuditEventHandler
+  class DeviationTrendCalculatedEventHandler
+  class EquipmentAuditEventHandler
+  class KpiDashboardCalculatedEventHandler
+  class LaboratoryAuditEventHandler
+  class TrackingAuditEventHandler
+}
+
+AuditLogEntryRecordedEventHandler ..> AuditLogEntryRecordedEvent
+AuditReportGeneratedEventHandler ..> AuditReportGeneratedEvent
+DeviationTrendCalculatedEventHandler ..> DeviationTrendCalculatedEvent
+KpiDashboardCalculatedEventHandler ..> KpiDashboardCalculatedEvent
+
+BatchAuditEventHandler --> AuditLogCommandService
+CaAuditEventHandler --> AuditLogCommandService
+EquipmentAuditEventHandler --> AuditLogCommandService
+LaboratoryAuditEventHandler --> AuditLogCommandService
+TrackingAuditEventHandler --> AuditLogCommandService
+
+package "ra.application.acl" {
+  class RaContextFacadeImpl
+}
+
+package "ra.interfaces.acl" {
+  interface RaContextFacade
+}
+
+RaContextFacadeImpl ..|> RaContextFacade
+RaContextFacadeImpl --> AuditLogCommandService
+
+package "ra.interfaces.events" {
+  class AuditLogEntryRecordedIntegrationEvent <<record>>
+  class AuditReportGeneratedIntegrationEvent <<record>>
+  class DeviationTrendCalculatedIntegrationEvent <<record>>
+  class KpiDashboardCalculatedIntegrationEvent <<record>>
+}
+
+AuditLogEntryRecordedIntegrationEvent --> AuditAction
+AuditReportGeneratedIntegrationEvent --> ReportType
+DeviationTrendCalculatedIntegrationEvent --> TrendDirection
+
+AuditLogEntryRecordedEventHandler ..> AuditLogEntryRecordedIntegrationEvent
+AuditReportGeneratedEventHandler ..> AuditReportGeneratedIntegrationEvent
+DeviationTrendCalculatedEventHandler ..> DeviationTrendCalculatedIntegrationEvent
+KpiDashboardCalculatedEventHandler ..> KpiDashboardCalculatedIntegrationEvent
+
+package "ra.infrastructure.persistence.jpa.entities" {
+  class AuditLogEntryPersistenceEntity
+  class AuditReportPersistenceEntity
+  class DeviationTrendPersistenceEntity
+  class KpiDashboardPersistenceEntity
+  class KpiMetricPersistenceEntity
+  class TrendDataPointPersistenceEntity
+}
+
+AuditLogEntryPersistenceEntity --|> AuditableAbstractPersistenceEntity
+AuditReportPersistenceEntity --|> AuditableAbstractPersistenceEntity
+DeviationTrendPersistenceEntity --|> AuditableAbstractPersistenceEntity
+KpiDashboardPersistenceEntity --|> AuditableAbstractPersistenceEntity
+KpiMetricPersistenceEntity --|> AuditableAbstractPersistenceEntity
+TrendDataPointPersistenceEntity --|> AuditableAbstractPersistenceEntity
+
+AuditLogEntryPersistenceEntity --> AuditAction
+AuditReportPersistenceEntity --> ReportType
+DeviationTrendPersistenceEntity --> TrendDirection
+KpiMetricPersistenceEntity --> KpiMetricStatus
+
+package "ra.infrastructure.persistence.jpa.repositories" {
+  interface AuditLogEntryPersistenceRepository
+  interface AuditReportPersistenceRepository
+  interface DeviationTrendPersistenceRepository
+  interface KpiDashboardPersistenceRepository
+  interface KpiMetricPersistenceRepository
+  interface TrendDataPointPersistenceRepository
+}
+
+AuditLogEntryPersistenceRepository --|> JpaRepository
+AuditReportPersistenceRepository --|> JpaRepository
+DeviationTrendPersistenceRepository --|> JpaRepository
+KpiDashboardPersistenceRepository --|> JpaRepository
+KpiMetricPersistenceRepository --|> JpaRepository
+TrendDataPointPersistenceRepository --|> JpaRepository
+
+AuditLogEntryPersistenceRepository --> AuditLogEntryPersistenceEntity
+AuditReportPersistenceRepository --> AuditReportPersistenceEntity
+DeviationTrendPersistenceRepository --> DeviationTrendPersistenceEntity
+KpiDashboardPersistenceRepository --> KpiDashboardPersistenceEntity
+KpiMetricPersistenceRepository --> KpiMetricPersistenceEntity
+TrendDataPointPersistenceRepository --> TrendDataPointPersistenceEntity
+
+package "ra.infrastructure.persistence.jpa.assemblers" {
+  class AuditLogEntryPersistenceAssembler
+  class AuditReportPersistenceAssembler
+  class DeviationTrendPersistenceAssembler
+  class KpiDashboardPersistenceAssembler
+  class KpiMetricPersistenceAssembler
+  class TrendDataPointPersistenceAssembler
+}
+
+AuditLogEntryPersistenceAssembler ..> AuditLogEntry
+AuditReportPersistenceAssembler ..> AuditReport
+DeviationTrendPersistenceAssembler ..> DeviationTrend
+KpiDashboardPersistenceAssembler ..> KpiDashboard
+KpiMetricPersistenceAssembler ..> KpiMetric
+TrendDataPointPersistenceAssembler ..> TrendDataPoint
+
+package "ra.infrastructure.persistence.jpa.adapters" {
+  class AuditLogRepositoryImpl
+  class AuditReportRepositoryImpl
+  class DeviationTrendRepositoryImpl
+  class KpiDashboardRepositoryImpl
+}
+
+AuditLogRepositoryImpl ..|> AuditLogRepository
+AuditReportRepositoryImpl ..|> AuditReportRepository
+DeviationTrendRepositoryImpl ..|> DeviationTrendRepository
+KpiDashboardRepositoryImpl ..|> KpiDashboardRepository
+
+AuditLogRepositoryImpl --> AuditLogEntryPersistenceRepository
+AuditLogRepositoryImpl --> AuditLogEntryPersistenceAssembler
+AuditReportRepositoryImpl --> AuditReportPersistenceRepository
+AuditReportRepositoryImpl --> AuditReportPersistenceAssembler
+DeviationTrendRepositoryImpl --> DeviationTrendPersistenceRepository
+DeviationTrendRepositoryImpl --> TrendDataPointPersistenceRepository
+DeviationTrendRepositoryImpl --> DeviationTrendPersistenceAssembler
+KpiDashboardRepositoryImpl --> KpiDashboardPersistenceRepository
+KpiDashboardRepositoryImpl --> KpiMetricPersistenceRepository
+KpiDashboardRepositoryImpl --> KpiDashboardPersistenceAssembler
+
+package "ra.infrastructure.persistence.jpa.converters" {
+  class AuditActionPersistenceConverter
+  class KpiMetricStatusPersistenceConverter
+  class ReportFormatPersistenceConverter
+  class ReportTypePersistenceConverter
+  class TrendDirectionPersistenceConverter
+}
+
+AuditActionPersistenceConverter ..|> AttributeConverter
+KpiMetricStatusPersistenceConverter ..|> AttributeConverter
+ReportFormatPersistenceConverter ..|> AttributeConverter
+ReportTypePersistenceConverter ..|> AttributeConverter
+TrendDirectionPersistenceConverter ..|> AttributeConverter
+
+AuditActionPersistenceConverter ..> AuditAction
+KpiMetricStatusPersistenceConverter ..> KpiMetricStatus
+ReportFormatPersistenceConverter ..> ReportFormat
+ReportTypePersistenceConverter ..> ReportType
+TrendDirectionPersistenceConverter ..> TrendDirection
+
+package "ra.interfaces.rest.resources" {
+  class AuditLogEntryResource <<record>>
+  class AuditReportResource <<record>>
+  class CalculateDeviationTrendResource <<record>>
+  class CalculateKpiDashboardResource <<record>>
+  class DeviationTrendResource <<record>>
+  class ExportEquipmentLogResource <<record>>
+  class GenerateBatchReportResource <<record>>
+  class GenerateComplianceReportResource <<record>>
+  class KpiDashboardResource <<record>>
+  class KpiMetricResource <<record>>
+  class RecordAuditLogEntryResource <<record>>
+  class TrendDataPointResource <<record>>
+}
+
+package "ra.interfaces.rest.transform" {
+  class AuditLogEntryResourceFromEntityAssembler
+  class AuditReportResourceFromEntityAssembler
+  class CalculateDeviationTrendCommandFromResourceAssembler
+  class CalculateKpiDashboardCommandFromResourceAssembler
+  class DeviationTrendResourceFromEntityAssembler
+  class ExportEquipmentLogCommandFromResourceAssembler
+  class GenerateBatchReportCommandFromResourceAssembler
+  class GenerateComplianceReportCommandFromResourceAssembler
+  class KpiDashboardResourceFromEntityAssembler
+  class KpiMetricResourceFromEntityAssembler
+  class RecordAuditLogEntryCommandFromResourceAssembler
+  class TrendDataPointResourceFromEntityAssembler
+}
+
+AuditLogEntryResourceFromEntityAssembler ..> AuditLogEntry
+AuditReportResourceFromEntityAssembler ..> AuditReport
+CalculateDeviationTrendCommandFromResourceAssembler ..> CalculateDeviationTrendCommand
+CalculateKpiDashboardCommandFromResourceAssembler ..> CalculateKpiDashboardCommand
+DeviationTrendResourceFromEntityAssembler ..> DeviationTrend
+ExportEquipmentLogCommandFromResourceAssembler ..> ExportEquipmentLogCommand
+GenerateBatchReportCommandFromResourceAssembler ..> GenerateBatchReportCommand
+GenerateComplianceReportCommandFromResourceAssembler ..> GenerateComplianceReportCommand
+KpiDashboardResourceFromEntityAssembler ..> KpiDashboard
+KpiMetricResourceFromEntityAssembler ..> KpiMetric
+RecordAuditLogEntryCommandFromResourceAssembler ..> RecordAuditLogEntryCommand
+TrendDataPointResourceFromEntityAssembler ..> TrendDataPoint
+
+package "ra.interfaces.rest" {
+  class AuditLogController
+  class DeviationTrendController
+  class KpiDashboardController
+  class ReportController
+}
+
+AuditLogController --> RaQueryService
+AuditLogController --> AuditLogCommandService
+AuditLogController ..> AuditLogEntryResourceFromEntityAssembler
+AuditLogController ..> RecordAuditLogEntryCommandFromResourceAssembler
+AuditLogController ..> ResponseEntityAssembler
+
+DeviationTrendController --> RaCommandService
+DeviationTrendController --> RaQueryService
+DeviationTrendController ..> CalculateDeviationTrendCommandFromResourceAssembler
+DeviationTrendController ..> DeviationTrendResourceFromEntityAssembler
+DeviationTrendController ..> ErrorResponseAssembler
+
+KpiDashboardController --> RaCommandService
+KpiDashboardController --> RaQueryService
+KpiDashboardController ..> CalculateKpiDashboardCommandFromResourceAssembler
+KpiDashboardController ..> KpiDashboardResourceFromEntityAssembler
+KpiDashboardController ..> ErrorResponseAssembler
+
+ReportController --> RaCommandService
+ReportController --> RaQueryService
+ReportController ..> GenerateBatchReportCommandFromResourceAssembler
+ReportController ..> GenerateComplianceReportCommandFromResourceAssembler
+ReportController ..> ExportEquipmentLogCommandFromResourceAssembler
+ReportController ..> AuditReportResourceFromEntityAssembler
+ReportController ..> ErrorResponseAssembler
 
 @enduml
