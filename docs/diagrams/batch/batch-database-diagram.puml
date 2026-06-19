@@ -1,105 +1,66 @@
 @startuml batch-database-diagram
-title QualiTrack – Batch Management Database
+
+title QualiTrack - Batch Backend Database Diagram
 
 hide methods
 hide stereotypes
 
-entity "batches" {
-  * <u>id</u> : VARCHAR(36)
-  --
-  lab_id : VARCHAR(36) FK NOT NULL
-  product_id : VARCHAR(36) FK NOT NULL
-  equipment_id : VARCHAR(36) FK NOT NULL
-  batch_code : VARCHAR(50) NOT NULL
-  status : ENUM('IN_PROCESS','BLOCKED',
-    'UNDER_INVESTIGATION',
-    'RELEASED','REJECTED',
-    'COMPLETED') DEFAULT 'IN_PROCESS'
-  start_date : DATE NOT NULL
-  end_date : DATE
-  created_at : DATETIME NOT NULL
-  updated_at : DATETIME
-  created_by : VARCHAR(36) NOT NULL
-}
+skinparam linetype ortho
+skinparam shadowing false
 
-entity "batch_raw_material_usages" {
-  * <u>id</u> : VARCHAR(36)
+entity "batches" as batches {
+  * <u>id</u> : BIGINT PK AUTO_INCREMENT
   --
-  batch_id : VARCHAR(36) FK NOT NULL
-  material_id : VARCHAR(36) FK NOT NULL
-  material_name : VARCHAR(150) NOT NULL
-  supplier : VARCHAR(150) NOT NULL
-  batch_number : VARCHAR(50) NOT NULL
-  quantity_used : DECIMAL(10,3) NOT NULL
+  laboratory_id : BIGINT FK NOT NULL
+  product_id : BIGINT FK NOT NULL
+  product_name : VARCHAR(150) NOT NULL
+  batch_number : VARCHAR(50) NOT NULL UNIQUE
+  quantity : DOUBLE NOT NULL
   unit : VARCHAR(20) NOT NULL
-  registered_at : DATETIME NOT NULL
-  registered_by : VARCHAR(36) NOT NULL
+  status : VARCHAR(50) NOT NULL
+  start_date : VARCHAR(30) NOT NULL
+  end_date : VARCHAR(30)
+  notes : VARCHAR(500)
+  created_at : DATETIME(6) NOT NULL
+  updated_at : DATETIME(6) NOT NULL
 }
 
-entity "digital_signatures" {
-  * <u>id</u> : VARCHAR(36)
+entity "raw_material_usages" as raw_material_usages {
+  * <u>id</u> : BIGINT PK AUTO_INCREMENT
   --
-  batch_id : VARCHAR(36) FK NOT NULL UNIQUE
-  qa_manager_id : VARCHAR(36) FK NOT NULL
-  qa_manager_name : VARCHAR(150) NOT NULL
-  observations : TEXT
-  signed_at : DATETIME NOT NULL
+  batch_id : BIGINT FK NOT NULL
+  raw_material_id : BIGINT FK NOT NULL
+  raw_material_name : VARCHAR(150) NOT NULL
+  quantity_used : DOUBLE NOT NULL
+  unit : VARCHAR(20) NOT NULL
+  usage_date : VARCHAR(30) NOT NULL
+  created_at : DATETIME(6) NOT NULL
+  updated_at : DATETIME(6) NOT NULL
 }
 
-entity "rejection_records" {
-  * <u>id</u> : VARCHAR(36)
+entity "digital_signatures" as digital_signatures {
+  * <u>id</u> : BIGINT PK AUTO_INCREMENT
   --
-  batch_id : VARCHAR(36) FK NOT NULL UNIQUE
-  rejected_by : VARCHAR(36) FK NOT NULL
-  rejected_by_name : VARCHAR(150) NOT NULL
-  root_cause : TEXT NOT NULL
-  corrective_action : TEXT
-  rejected_at : DATETIME NOT NULL
+  batch_id : BIGINT FK NOT NULL
+  signed_by_user_id : BIGINT FK NOT NULL
+  signature_hash : VARCHAR(255) NOT NULL
+  signed_at : VARCHAR(30) NOT NULL
+  created_at : DATETIME(6) NOT NULL
+  updated_at : DATETIME(6) NOT NULL
 }
 
-entity "batch_status_history" {
-  * <u>id</u> : VARCHAR(36)
+entity "rejection_records" as rejection_records {
+  * <u>id</u> : BIGINT PK AUTO_INCREMENT
   --
-  batch_id : VARCHAR(36) FK NOT NULL
-  previous_status : VARCHAR(50)
-  new_status : VARCHAR(50) NOT NULL
-  changed_at : DATETIME NOT NULL
-  changed_by : VARCHAR(36) NOT NULL
-  reason : TEXT
+  batch_id : BIGINT FK NOT NULL
+  rejection_date : VARCHAR(30) NOT NULL
+  reason : VARCHAR(500) NOT NULL
+  created_at : DATETIME(6) NOT NULL
+  updated_at : DATETIME(6) NOT NULL
 }
 
-batches ||--o{ batch_raw_material_usages : "consume"
-batches ||--o| digital_signatures : "firmado con"
-batches ||--o| rejection_records : "rechazado con"
-batches ||--o{ batch_status_history : "historial de"
-
-note right of batches
-  UNIQUE: (batch_code, lab_id)
-  Índices:
-  - IDX_batches_lab_id (lab_id)
-  - IDX_batches_product_id (product_id)
-  - IDX_batches_equipment_id (equipment_id)
-  - IDX_batches_status (status)
-  - IDX_batches_start_date (start_date)
-end note
-
-note right of batch_raw_material_usages
-  Inmutable: no se permite
-  UPDATE ni DELETE.
-  Índices:
-  - IDX_mat_usage_batch_id (batch_id)
-  - IDX_mat_usage_material_id (material_id)
-end note
-
-note right of digital_signatures
-  UNIQUE: batch_id
-  Una sola firma por lote.
-end note
-
-note right of rejection_records
-  UNIQUE: batch_id
-  Un solo registro de
-  rechazo por lote.
-end note
+batches ||--o{ raw_material_usages : "uses"
+batches ||--o{ digital_signatures : "signs"
+batches ||--o{ rejection_records : "rejects"
 
 @enduml

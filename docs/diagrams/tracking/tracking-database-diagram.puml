@@ -1,75 +1,55 @@
 @startuml tracking-database-diagram
-title QualiTrack – Tracking (IoT) Database
+
+title QualiTrack - Tracking Database Diagram
 
 hide methods
 hide stereotypes
 
-entity "device_bindings" {
-  * <u>id</u> : VARCHAR(36)
+entity "equipment_telemetry" {
+  * id : BIGINT PK
   --
-  equipment_id : VARCHAR(36) FK NOT NULL
-  lab_id : VARCHAR(36) FK NOT NULL
-  device_id : VARCHAR(100) NOT NULL UNIQUE
-  active : BOOLEAN DEFAULT TRUE
-  bound_at : DATETIME NOT NULL
-  unbound_at : DATETIME
-  bound_by : VARCHAR(36)
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME NOT NULL
+  equipment_id : BIGINT NOT NULL UNIQUE
 }
 
-entity "measurements" {
-  * <u>id</u> : VARCHAR(36)
+entity "equipment_telemetry_statuses" {
+  * id : BIGINT PK
   --
-  equipment_id : VARCHAR(36) FK NOT NULL
-  batch_id : VARCHAR(36) FK
-  device_id : VARCHAR(100) NOT NULL
-  temperature : DECIMAL(6,2)
-  pressure : DECIMAL(6,2)
-  ph : DECIMAL(4,2)
-  compliance_result : ENUM('PENDING','CONFORM',
-    'DEVIATION',
-    'CRITICAL_DEVIATION') DEFAULT 'PENDING'
-  recorded_at : DATETIME NOT NULL
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME NOT NULL
+  equipment_id : BIGINT NOT NULL
+  is_online : BOOLEAN NOT NULL
+  current_status : VARCHAR(40) NOT NULL
+  last_heartbeat : VARCHAR(50) NOT NULL
 }
 
-entity "telemetry_records" {
-  * <u>id</u> : VARCHAR(36)
+entity "telemetry_measurements" {
+  * id : BIGINT PK
   --
-  equipment_id : VARCHAR(36) FK NOT NULL
-  measurement_id : VARCHAR(36) FK NOT NULL
-  variable : ENUM('TEMPERATURE','PRESSURE','PH',
-    'HUMIDITY','FLOW_RATE') NOT NULL
-  value : DECIMAL(10,4) NOT NULL
-  unit : VARCHAR(20) NOT NULL
-  recorded_at : DATETIME NOT NULL
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME NOT NULL
+  equipment_id : BIGINT NOT NULL
+  parameter_name : VARCHAR(120) NOT NULL
+  value : DOUBLE NOT NULL
+  unit : VARCHAR(40) NOT NULL
+  timestamp : VARCHAR(50) NOT NULL
 }
 
-device_bindings ||--o{ measurements : "genera"
-measurements ||--o{ telemetry_records : "desglosa en"
+entity "telemetry_history_points" {
+  * id : BIGINT PK
+  --
+  created_at : DATETIME NOT NULL
+  updated_at : DATETIME NOT NULL
+  equipment_id : BIGINT NOT NULL
+  parameter_name : VARCHAR(120) NOT NULL
+  recorded_value : DOUBLE NOT NULL
+  timestamp : VARCHAR(50) NOT NULL
+  is_anomaly : BOOLEAN NOT NULL
+}
 
-note right of measurements
-  Tabla de alto volumen.
-  Índices:
-  - IDX_measurements_equipment_id (equipment_id)
-  - IDX_measurements_batch_id (batch_id)
-  - IDX_measurements_recorded_at (recorded_at)
-  - IDX_measurements_result (compliance_result)
-  Particionada por rango de fecha
-  (recorded_at) para alto rendimiento.
-end note
-
-note right of device_bindings
-  UNIQUE: device_id
-  Índices:
-  - IDX_bindings_equipment_id (equipment_id)
-  - IDX_bindings_lab_id (lab_id)
-  - IDX_bindings_active (active)
-end note
-
-note right of telemetry_records
-  Índices:
-  - IDX_telemetry_measurement_id (measurement_id)
-  - IDX_telemetry_equipment_variable (equipment_id, variable)
-  - IDX_telemetry_recorded_at (recorded_at)
-end note
+equipment_telemetry ||--o{ equipment_telemetry_statuses : equipment_id
+equipment_telemetry ||--o{ telemetry_measurements : equipment_id
+equipment_telemetry ||--o{ telemetry_history_points : equipment_id
 
 @enduml
