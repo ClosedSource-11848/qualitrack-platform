@@ -3,15 +3,15 @@ package com.closedsource.qualitrack.platform.ra.interfaces.rest;
 import com.closedsource.qualitrack.platform.ra.application.commandservices.RaCommandService;
 import com.closedsource.qualitrack.platform.ra.application.queryservices.RaQueryService;
 import com.closedsource.qualitrack.platform.ra.domain.model.aggregates.KpiDashboard;
+import com.closedsource.qualitrack.platform.ra.domain.model.commands.CalculateKpiDashboardCommand;
 import com.closedsource.qualitrack.platform.ra.domain.model.queries.GetKpiDashboardByLaboratoryIdQuery;
-import com.closedsource.qualitrack.platform.ra.interfaces.rest.resources.CalculateKpiDashboardResource;
 import com.closedsource.qualitrack.platform.ra.interfaces.rest.resources.KpiDashboardResource;
-import com.closedsource.qualitrack.platform.ra.interfaces.rest.transform.CalculateKpiDashboardCommandFromResourceAssembler;
 import com.closedsource.qualitrack.platform.ra.interfaces.rest.transform.KpiDashboardResourceFromEntityAssembler;
 import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
 import com.closedsource.qualitrack.platform.shared.application.result.Result;
 import com.closedsource.qualitrack.platform.shared.interfaces.rest.transform.ErrorResponseAssembler;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,48 +19,56 @@ import org.springframework.web.bind.annotation.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
- * REST controller that exposes KPI dashboard resources.
+ * REST controller that exposes laboratory KPI dashboard resources.
  */
 @RestController
-@RequestMapping(value = "/api/v1/kpis", produces = APPLICATION_JSON_VALUE)
-@Tag(name = "KPIs", description = "KPI dashboard endpoints")
+@RequestMapping(
+        value = "/api/v1/laboratories/{laboratoryId}/kpi-dashboards",
+        produces = APPLICATION_JSON_VALUE
+)
+@Tag(name = "Laboratories", description = "Laboratory KPI dashboard endpoints")
 public class KpiDashboardController {
 
     private final RaCommandService raCommandService;
     private final RaQueryService raQueryService;
 
-    public KpiDashboardController(RaCommandService raCommandService, RaQueryService raQueryService) {
+    public KpiDashboardController(
+            RaCommandService raCommandService,
+            RaQueryService raQueryService
+    ) {
         this.raCommandService = raCommandService;
         this.raQueryService = raQueryService;
     }
 
     /**
-     * Calculates and stores a KPI dashboard snapshot for a laboratory.
+     * Creates a KPI dashboard snapshot for a laboratory.
      *
-     * @param resource KPI dashboard calculation request resource
-     * @return the calculated KPI dashboard resource
+     * @param laboratoryId laboratory numeric identifier
+     * @return the created KPI dashboard resource
      */
-    @PostMapping(value = "/calculate", consumes = APPLICATION_JSON_VALUE)
-    @Operation(summary = "Calculate KPI dashboard")
-    public ResponseEntity<?> calculateKpiDashboard(
-            @RequestBody CalculateKpiDashboardResource resource
+    @PostMapping
+    @Operation(summary = "Create laboratory KPI dashboard snapshot")
+    public ResponseEntity<?> createKpiDashboard(
+            @PathVariable Long laboratoryId
     ) {
-        var command = CalculateKpiDashboardCommandFromResourceAssembler.toCommandFromResource(resource);
-        var result = raCommandService.handle(command);
+        var result = raCommandService.handle(new CalculateKpiDashboardCommand(laboratoryId));
 
         return toKpiDashboardResponse(result);
     }
 
     /**
-     * Retrieves the latest KPI dashboard for a laboratory.
+     * Retrieves KPI dashboard snapshots for a laboratory.
      *
-     * @param laboratoryId the laboratory numeric identifier
+     * @param laboratoryId laboratory numeric identifier
+     * @param limit maximum number of dashboard snapshots to return
      * @return the KPI dashboard resource when found
      */
     @GetMapping
-    @Operation(summary = "Get KPI dashboard by laboratory")
+    @Operation(summary = "Get laboratory KPI dashboards")
     public ResponseEntity<KpiDashboardResource> getKpiDashboardByLaboratoryId(
-            @RequestParam Long laboratoryId
+            @PathVariable Long laboratoryId,
+            @Parameter(description = "Maximum number of dashboard snapshots to return")
+            @RequestParam(defaultValue = "1") Integer limit
     ) {
         var dashboard = raQueryService.handle(new GetKpiDashboardByLaboratoryIdQuery(laboratoryId));
 

@@ -5,14 +5,12 @@ import com.closedsource.qualitrack.platform.ra.domain.model.valueobjects.ReportF
 /**
  * Resource used to request export of historical equipment logs.
  *
- * @param equipmentId The numeric identifier of the equipment.
  * @param startDate The beginning of the exported period.
  * @param endDate The end of the exported period.
  * @param format The requested output format.
  * @param requestedBy The numeric identifier of the requesting user.
  */
 public record ExportEquipmentLogResource(
-        Long equipmentId,
         String startDate,
         String endDate,
         ReportFormat format,

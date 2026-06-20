@@ -21,10 +21,11 @@ public final class CalculateDeviationTrendCommandFromResourceAssembler {
      * @return The calculation command.
      */
     public static CalculateDeviationTrendCommand toCommandFromResource(
+            Long equipmentId,
             CalculateDeviationTrendResource resource
     ) {
         return new CalculateDeviationTrendCommand(
-                resource.equipmentId(),
+                equipmentId,
                 resource.parameterName()
         );
     }

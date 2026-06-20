@@ -2,6 +2,7 @@ package com.closedsource.qualitrack.platform.ra.interfaces.rest;
 
 import com.closedsource.qualitrack.platform.ra.application.commandservices.AuditLogCommandService;
 import com.closedsource.qualitrack.platform.ra.application.queryservices.RaQueryService;
+import com.closedsource.qualitrack.platform.ra.domain.model.entities.AuditLogEntry;
 import com.closedsource.qualitrack.platform.ra.domain.model.queries.GetAuditLogQuery;
 import com.closedsource.qualitrack.platform.ra.interfaces.rest.resources.AuditLogEntryResource;
 import com.closedsource.qualitrack.platform.ra.interfaces.rest.resources.RecordAuditLogEntryResource;
@@ -19,17 +20,22 @@ import java.util.List;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
- * REST controller that exposes audit log resources.
+ * REST controller that exposes equipment audit log resources.
  */
 @RestController
-@RequestMapping(value = "/api/v1/audit-log", produces = APPLICATION_JSON_VALUE)
-@Tag(name = "Audit Log", description = "Audit log query and recording endpoints")
-public class AuditLogController {
+@RequestMapping(
+        value = "/api/v1/equipments/{equipmentId}/audit-logs",
+        produces = APPLICATION_JSON_VALUE
+)
+@Tag(name = "Equipment", description = "Equipment audit log endpoints")
+public class EquipmentAuditLogController {
+
+    private static final String ENTITY_TYPE = "EQUIPMENT";
 
     private final RaQueryService raQueryService;
     private final AuditLogCommandService auditLogCommandService;
 
-    public AuditLogController(
+    public EquipmentAuditLogController(
             RaQueryService raQueryService,
             AuditLogCommandService auditLogCommandService
     ) {
@@ -38,41 +44,49 @@ public class AuditLogController {
     }
 
     /**
-     * Retrieves audit log entries using optional filters.
+     * Retrieves audit log entries for an equipment using optional date filters.
      *
-     * @param equipmentId optional equipment identifier
-     * @param batchId optional batch identifier
+     * @param equipmentId equipment numeric identifier
      * @param dateFrom optional start date
      * @param dateTo optional end date
      * @return the audit log entry resources
      */
     @GetMapping
-    @Operation(summary = "Get audit log entries")
-    public ResponseEntity<List<AuditLogEntryResource>> getAuditLog(
-            @RequestParam(required = false) Long equipmentId,
-            @RequestParam(required = false) Long batchId,
+    @Operation(summary = "Get equipment audit log entries")
+    public ResponseEntity<List<AuditLogEntryResource>> getEquipmentAuditLogs(
+            @PathVariable Long equipmentId,
             @RequestParam(required = false) String dateFrom,
             @RequestParam(required = false) String dateTo
     ) {
-        var entries = raQueryService.handle(new GetAuditLogQuery(equipmentId, batchId, dateFrom, dateTo));
+        var entries = raQueryService.handle(new GetAuditLogQuery(
+                equipmentId,
+                null,
+                dateFrom,
+                dateTo
+        ));
 
-        var resources = entries.stream()
-                .map(AuditLogEntryResourceFromEntityAssembler::toResourceFromEntity)
-                .toList();
-
-        return ResponseEntity.ok(resources);
+        return ResponseEntity.ok(toAuditLogEntryResources(entries));
     }
 
     /**
-     * Records a new audit log entry.
+     * Records a new audit log entry for an equipment.
      *
+     * @param equipmentId equipment numeric identifier
      * @param resource the audit log entry request resource
      * @return the recorded audit log entry resource
      */
-    @PostMapping
-    @Operation(summary = "Record audit log entry")
-    public ResponseEntity<?> recordAuditLogEntry(@RequestBody RecordAuditLogEntryResource resource) {
-        var command = RecordAuditLogEntryCommandFromResourceAssembler.toCommandFromResource(resource);
+    @PostMapping(consumes = APPLICATION_JSON_VALUE)
+    @Operation(summary = "Record equipment audit log entry")
+    public ResponseEntity<?> recordEquipmentAuditLogEntry(
+            @PathVariable Long equipmentId,
+            @RequestBody RecordAuditLogEntryResource resource
+    ) {
+        var command = RecordAuditLogEntryCommandFromResourceAssembler.toCommandFromResource(
+                ENTITY_TYPE,
+                equipmentId,
+                resource
+        );
+
         var result = auditLogCommandService.handle(command);
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
@@ -80,5 +94,11 @@ public class AuditLogController {
                 AuditLogEntryResourceFromEntityAssembler::toResourceFromEntity,
                 HttpStatus.CREATED
         );
+    }
+
+    private static List<AuditLogEntryResource> toAuditLogEntryResources(List<AuditLogEntry> entries) {
+        return entries.stream()
+                .map(AuditLogEntryResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
     }
 }

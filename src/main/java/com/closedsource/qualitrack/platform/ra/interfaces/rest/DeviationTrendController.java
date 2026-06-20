@@ -21,17 +21,23 @@ import java.util.List;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
- * REST controller that exposes deviation trend resources.
+ * REST controller that exposes equipment deviation trend resources.
  */
 @RestController
-@RequestMapping(value = "/api/v1/deviation-trends", produces = APPLICATION_JSON_VALUE)
-@Tag(name = "Deviation Trends", description = "Deviation trend analysis endpoints")
+@RequestMapping(
+        value = "/api/v1/equipments/{equipmentId}/deviation-trends",
+        produces = APPLICATION_JSON_VALUE
+)
+@Tag(name = "Equipment", description = "Equipment deviation trend analysis endpoints")
 public class DeviationTrendController {
 
     private final RaCommandService raCommandService;
     private final RaQueryService raQueryService;
 
-    public DeviationTrendController(RaCommandService raCommandService, RaQueryService raQueryService) {
+    public DeviationTrendController(
+            RaCommandService raCommandService,
+            RaQueryService raQueryService
+    ) {
         this.raCommandService = raCommandService;
         this.raQueryService = raQueryService;
     }
@@ -39,15 +45,20 @@ public class DeviationTrendController {
     /**
      * Calculates and stores a deviation trend for an equipment parameter.
      *
+     * @param equipmentId equipment numeric identifier
      * @param resource deviation trend calculation request resource
      * @return the calculated deviation trend resource
      */
     @PostMapping(value = "/calculate", consumes = APPLICATION_JSON_VALUE)
-    @Operation(summary = "Calculate deviation trend")
+    @Operation(summary = "Calculate equipment deviation trend")
     public ResponseEntity<?> calculateDeviationTrend(
+            @PathVariable Long equipmentId,
             @RequestBody CalculateDeviationTrendResource resource
     ) {
-        var command = CalculateDeviationTrendCommandFromResourceAssembler.toCommandFromResource(resource);
+        var command = CalculateDeviationTrendCommandFromResourceAssembler.toCommandFromResource(
+                equipmentId,
+                resource
+        );
         var result = raCommandService.handle(command);
 
         return toDeviationTrendResponse(result);
@@ -56,13 +67,13 @@ public class DeviationTrendController {
     /**
      * Retrieves deviation trends for an equipment.
      *
-     * @param equipmentId the equipment numeric identifier
+     * @param equipmentId equipment numeric identifier
      * @return the deviation trend resources
      */
     @GetMapping
-    @Operation(summary = "Get deviation trends by equipment")
+    @Operation(summary = "Get equipment deviation trends")
     public ResponseEntity<List<DeviationTrendResource>> getDeviationTrendsByEquipmentId(
-            @RequestParam Long equipmentId
+            @PathVariable Long equipmentId
     ) {
         var trends = raQueryService.handle(new GetDeviationTrendsByEquipmentIdQuery(equipmentId));
 
