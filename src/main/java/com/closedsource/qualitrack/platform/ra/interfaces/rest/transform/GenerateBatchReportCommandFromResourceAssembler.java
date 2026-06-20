@@ -7,20 +7,23 @@ import com.closedsource.qualitrack.platform.ra.interfaces.rest.resources.Generat
  * Assembler that transforms batch report REST resources into application commands.
  */
 public final class GenerateBatchReportCommandFromResourceAssembler {
+
     private GenerateBatchReportCommandFromResourceAssembler() {
     }
 
     /**
      * Converts a batch report resource into a command.
      *
+     * @param batchId the batch numeric identifier from the request path
      * @param resource the batch report request resource
      * @return the batch report generation command
      */
     public static GenerateBatchReportCommand toCommandFromResource(
+            Long batchId,
             GenerateBatchReportResource resource
     ) {
         return new GenerateBatchReportCommand(
-                resource.batchId(),
+                batchId,
                 resource.includeTelemetry(),
                 resource.includeDeviations(),
                 resource.format(),
