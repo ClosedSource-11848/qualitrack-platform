@@ -5,13 +5,11 @@ import com.closedsource.qualitrack.platform.tracking.domain.model.valueobjects.T
 /**
  * Resource used to request updating equipment telemetry status.
  *
- * @param equipmentId the monitored equipment identifier
  * @param isOnline whether the equipment is online
  * @param currentStatus the current telemetry status
  * @param lastHeartbeat the latest heartbeat timestamp
  */
 public record UpdateEquipmentTelemetryStatusResource(
-        Long equipmentId,
         Boolean isOnline,
         TelemetryStatus currentStatus,
         String lastHeartbeat

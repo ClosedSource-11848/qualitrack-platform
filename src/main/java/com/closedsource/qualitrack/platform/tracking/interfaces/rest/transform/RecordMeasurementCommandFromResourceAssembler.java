@@ -7,18 +7,23 @@ import com.closedsource.qualitrack.platform.tracking.interfaces.rest.resources.R
  * Assembler that transforms measurement REST resources into application commands.
  */
 public final class RecordMeasurementCommandFromResourceAssembler {
+
     private RecordMeasurementCommandFromResourceAssembler() {
     }
 
     /**
      * Converts a record measurement resource into a command.
      *
+     * @param equipmentId the equipment numeric identifier from the route path
      * @param resource the record measurement resource
      * @return the record measurement command
      */
-    public static RecordMeasurementCommand toCommandFromResource(RecordMeasurementResource resource) {
+    public static RecordMeasurementCommand toCommandFromResource(
+            Long equipmentId,
+            RecordMeasurementResource resource
+    ) {
         return new RecordMeasurementCommand(
-                resource.equipmentId(),
+                equipmentId,
                 resource.parameterName(),
                 resource.value(),
                 resource.unit(),

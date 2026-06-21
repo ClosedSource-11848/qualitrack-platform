@@ -27,9 +27,12 @@ import java.time.OffsetDateTime;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
+/**
+ * REST controller that receives Stripe webhook events.
+ */
 @RestController
-@RequestMapping(value = "/api/v1/subscriptions/stripe", produces = APPLICATION_JSON_VALUE)
-@Tag(name = "Stripe Webhooks", description = "Stripe subscription webhook endpoints")
+@RequestMapping(value = "/api/v1/stripe/webhooks", produces = APPLICATION_JSON_VALUE)
+@Tag(name = "Stripe Webhooks", description = "Stripe webhook endpoints")
 @Slf4j
 public class StripeWebhookController {
 
@@ -50,8 +53,8 @@ public class StripeWebhookController {
         this.externalStripeService = externalStripeService;
     }
 
-    @PostMapping("/webhook")
-    @Operation(summary = "Process Stripe webhook", description = "Processes Stripe checkout and subscription webhook events.")
+    @PostMapping(consumes = APPLICATION_JSON_VALUE)
+    @Operation(summary = "Process Stripe webhook")
     public ResponseEntity<StripeWebhookResource> handleStripeWebhook(
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String signatureHeader
@@ -134,7 +137,11 @@ public class StripeWebhookController {
                     OffsetDateTime.now().toString()
             ));
 
-            log.info("Subscription '{}' activated from Stripe checkout session '{}'.", subscriptionId, session.getId());
+            log.info(
+                    "Subscription '{}' activated from Stripe checkout session '{}'.",
+                    subscriptionId,
+                    session.getId()
+            );
         });
     }
 }

@@ -1,5 +1,6 @@
 package com.closedsource.qualitrack.platform.tracking.interfaces.rest;
 
+import com.closedsource.qualitrack.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import com.closedsource.qualitrack.platform.tracking.application.commandservices.TrackingCommandService;
 import com.closedsource.qualitrack.platform.tracking.application.queryservices.TrackingQueryService;
 import com.closedsource.qualitrack.platform.tracking.domain.model.entities.EquipmentTelemetryStatus;
@@ -19,7 +20,6 @@ import com.closedsource.qualitrack.platform.tracking.interfaces.rest.transform.R
 import com.closedsource.qualitrack.platform.tracking.interfaces.rest.transform.RecordTelemetryHistoryPointCommandFromResourceAssembler;
 import com.closedsource.qualitrack.platform.tracking.interfaces.rest.transform.TelemetryHistoryPointResourceFromEntityAssembler;
 import com.closedsource.qualitrack.platform.tracking.interfaces.rest.transform.UpdateEquipmentTelemetryStatusCommandFromResourceAssembler;
-import com.closedsource.qualitrack.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
@@ -31,27 +31,16 @@ import java.util.List;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
- * REST controller that exposes telemetry tracking endpoints.
- *
- * @remarks
- * This controller provides the HTTP contract consumed by the frontend Tracking
- * bounded context. It supports latest measurements, current equipment telemetry
- * status, and historical telemetry points.
+ * REST controller that exposes equipment telemetry resources.
  */
 @RestController
-@RequestMapping(value = "/api/v1/telemetry", produces = APPLICATION_JSON_VALUE)
-@Tag(name = "Tracking", description = "Telemetry tracking endpoints")
+@RequestMapping(value = "/api/v1/equipments/{equipmentId}", produces = APPLICATION_JSON_VALUE)
+@Tag(name = "Equipment", description = "Equipment telemetry endpoints")
 public class TelemetryController {
 
     private final TrackingCommandService trackingCommandService;
     private final TrackingQueryService trackingQueryService;
 
-    /**
-     * Creates a new TelemetryController.
-     *
-     * @param trackingCommandService Tracking command service
-     * @param trackingQueryService Tracking query service
-     */
     public TelemetryController(
             TrackingCommandService trackingCommandService,
             TrackingQueryService trackingQueryService
@@ -60,16 +49,10 @@ public class TelemetryController {
         this.trackingQueryService = trackingQueryService;
     }
 
-    /**
-     * Retrieves latest telemetry measurements.
-     *
-     * @param equipmentId optional equipment identifier
-     * @return latest measurement resources
-     */
-    @GetMapping("/measurements")
-    @Operation(summary = "Get latest telemetry measurements")
+    @GetMapping("/telemetry-measurements")
+    @Operation(summary = "Get equipment telemetry measurements")
     public ResponseEntity<List<MeasurementResource>> getLatestMeasurements(
-            @RequestParam(required = false) Long equipmentId
+            @PathVariable Long equipmentId
     ) {
         var measurements = trackingQueryService.handle(new GetLatestMeasurementsQuery(equipmentId));
 
@@ -80,16 +63,16 @@ public class TelemetryController {
         return ResponseEntity.ok(resources);
     }
 
-    /**
-     * Records a telemetry measurement.
-     *
-     * @param resource the record measurement resource
-     * @return the recorded measurement identifier
-     */
-    @PostMapping(value = "/measurements", consumes = APPLICATION_JSON_VALUE)
-    @Operation(summary = "Record telemetry measurement")
-    public ResponseEntity<?> recordMeasurement(@RequestBody RecordMeasurementResource resource) {
-        var command = RecordMeasurementCommandFromResourceAssembler.toCommandFromResource(resource);
+    @PostMapping(value = "/telemetry-measurements", consumes = APPLICATION_JSON_VALUE)
+    @Operation(summary = "Record equipment telemetry measurement")
+    public ResponseEntity<?> recordMeasurement(
+            @PathVariable Long equipmentId,
+            @RequestBody RecordMeasurementResource resource
+    ) {
+        var command = RecordMeasurementCommandFromResourceAssembler.toCommandFromResource(
+                equipmentId,
+                resource
+        );
         var result = trackingCommandService.handle(command);
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
@@ -99,13 +82,7 @@ public class TelemetryController {
         );
     }
 
-    /**
-     * Retrieves the current telemetry status for an equipment.
-     *
-     * @param equipmentId the equipment identifier
-     * @return current equipment telemetry status resource
-     */
-    @GetMapping("/status/{equipmentId}")
+    @GetMapping("/telemetry-status")
     @Operation(summary = "Get equipment telemetry status")
     public ResponseEntity<EquipmentTelemetryStatusResource> getEquipmentTelemetryStatus(
             @PathVariable Long equipmentId
@@ -124,18 +101,16 @@ public class TelemetryController {
         );
     }
 
-    /**
-     * Updates the current telemetry status for an equipment.
-     *
-     * @param resource the update equipment telemetry status resource
-     * @return the saved status identifier
-     */
-    @PutMapping(value = "/status", consumes = APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/telemetry-status", consumes = APPLICATION_JSON_VALUE)
     @Operation(summary = "Update equipment telemetry status")
     public ResponseEntity<?> updateEquipmentTelemetryStatus(
+            @PathVariable Long equipmentId,
             @RequestBody UpdateEquipmentTelemetryStatusResource resource
     ) {
-        var command = UpdateEquipmentTelemetryStatusCommandFromResourceAssembler.toCommandFromResource(resource);
+        var command = UpdateEquipmentTelemetryStatusCommandFromResourceAssembler.toCommandFromResource(
+                equipmentId,
+                resource
+        );
         var result = trackingCommandService.handle(command);
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
@@ -145,18 +120,10 @@ public class TelemetryController {
         );
     }
 
-    /**
-     * Retrieves historical telemetry points.
-     *
-     * @param equipmentId optional equipment identifier
-     * @param from optional start timestamp
-     * @param to optional end timestamp
-     * @return telemetry history point resources
-     */
-    @GetMapping("/history")
-    @Operation(summary = "Get telemetry history")
+    @GetMapping("/telemetry-history")
+    @Operation(summary = "Get equipment telemetry history")
     public ResponseEntity<List<TelemetryHistoryPointResource>> getTelemetryHistory(
-            @RequestParam(required = false) Long equipmentId,
+            @PathVariable Long equipmentId,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to
     ) {
@@ -171,18 +138,16 @@ public class TelemetryController {
         return ResponseEntity.ok(resources);
     }
 
-    /**
-     * Records a telemetry history point.
-     *
-     * @param resource the record telemetry history point resource
-     * @return the recorded telemetry history point identifier
-     */
-    @PostMapping(value = "/history", consumes = APPLICATION_JSON_VALUE)
-    @Operation(summary = "Record telemetry history point")
+    @PostMapping(value = "/telemetry-history", consumes = APPLICATION_JSON_VALUE)
+    @Operation(summary = "Record equipment telemetry history point")
     public ResponseEntity<?> recordTelemetryHistoryPoint(
+            @PathVariable Long equipmentId,
             @RequestBody RecordTelemetryHistoryPointResource resource
     ) {
-        var command = RecordTelemetryHistoryPointCommandFromResourceAssembler.toCommandFromResource(resource);
+        var command = RecordTelemetryHistoryPointCommandFromResourceAssembler.toCommandFromResource(
+                equipmentId,
+                resource
+        );
         var result = trackingCommandService.handle(command);
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
