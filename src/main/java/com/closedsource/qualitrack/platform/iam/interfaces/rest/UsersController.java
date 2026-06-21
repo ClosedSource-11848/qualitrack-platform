@@ -3,11 +3,14 @@ package com.closedsource.qualitrack.platform.iam.interfaces.rest;
 import com.closedsource.qualitrack.platform.iam.application.commandservices.UserCommandService;
 import com.closedsource.qualitrack.platform.iam.application.queryservices.UserQueryService;
 import com.closedsource.qualitrack.platform.iam.domain.model.commands.AssignRoleCommand;
-import com.closedsource.qualitrack.platform.iam.domain.model.commands.DeactivateUserCommand;
 import com.closedsource.qualitrack.platform.iam.domain.model.queries.GetAllUsersQuery;
 import com.closedsource.qualitrack.platform.iam.domain.model.queries.GetUserByIdQuery;
+import com.closedsource.qualitrack.platform.iam.interfaces.rest.resources.UpdateUserStatusResource;
 import com.closedsource.qualitrack.platform.iam.interfaces.rest.resources.UserResource;
+import com.closedsource.qualitrack.platform.iam.interfaces.rest.transform.UpdateUserStatusCommandFromResourceAssembler;
 import com.closedsource.qualitrack.platform.iam.interfaces.rest.transform.UserResourceFromEntityAssembler;
+import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
+import com.closedsource.qualitrack.platform.shared.interfaces.rest.transform.ErrorResponseAssembler;
 import com.closedsource.qualitrack.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,7 +23,7 @@ import java.util.List;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
- * REST controller for IAM user administration operations.
+ * REST controller for IAM user resources.
  */
 @RestController
 @RequestMapping(value = "/api/v1/users", produces = APPLICATION_JSON_VALUE)
@@ -60,8 +63,8 @@ public class UsersController {
         return ResponseEntity.ok(UserResourceFromEntityAssembler.toResourceFromEntity(user.get()));
     }
 
-    @PatchMapping("/{userId}/roles/{roleName}")
-    @Operation(summary = "Assign role", description = "Assigns a role to an IAM user.")
+    @PutMapping("/{userId}/roles/{roleName}")
+    @Operation(summary = "Assign user role", description = "Assigns a role to an IAM user.")
     public ResponseEntity<?> assignRole(
             @PathVariable Long userId,
             @PathVariable String roleName
@@ -75,10 +78,37 @@ public class UsersController {
         );
     }
 
-    @PatchMapping("/{userId}/deactivate")
-    @Operation(summary = "Deactivate user", description = "Deactivates an IAM user account.")
-    public ResponseEntity<?> deactivateUser(@PathVariable Long userId) {
-        var result = userCommandService.handle(new DeactivateUserCommand(userId));
+    @PatchMapping(value = "/{userId}", consumes = APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "Update user status",
+            description = "Updates a user account status. Currently supports deactivation by sending active=false."
+    )
+    public ResponseEntity<?> updateUserStatus(
+            @PathVariable Long userId,
+            @RequestBody UpdateUserStatusResource resource
+    ) {
+        if (resource.active() == null) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.validationError(
+                            "User",
+                            "active status is required"
+                    )
+            );
+        }
+
+        if (Boolean.TRUE.equals(resource.active())) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.validationError(
+                            "User",
+                            "Activating users is not supported yet"
+                    )
+            );
+        }
+
+        var command = UpdateUserStatusCommandFromResourceAssembler
+                .toDeactivateCommandFromResource(userId, resource);
+
+        var result = userCommandService.handle(command);
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
