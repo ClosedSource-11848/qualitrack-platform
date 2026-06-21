@@ -9,21 +9,16 @@ import com.closedsource.qualitrack.platform.batch.domain.model.queries.GetBatche
 import com.closedsource.qualitrack.platform.batch.domain.model.valueobjects.BatchStatus;
 import com.closedsource.qualitrack.platform.batch.interfaces.rest.resources.BatchResource;
 import com.closedsource.qualitrack.platform.batch.interfaces.rest.resources.CreateBatchResource;
-import com.closedsource.qualitrack.platform.batch.interfaces.rest.resources.ReleaseBatchResource;
-import com.closedsource.qualitrack.platform.batch.interfaces.rest.resources.RejectBatchResource;
+import com.closedsource.qualitrack.platform.batch.interfaces.rest.resources.UpdateBatchStatusResource;
 import com.closedsource.qualitrack.platform.batch.interfaces.rest.transform.BatchResourceFromEntityAssembler;
 import com.closedsource.qualitrack.platform.batch.interfaces.rest.transform.CreateBatchCommandFromResourceAssembler;
-import com.closedsource.qualitrack.platform.batch.interfaces.rest.transform.ReleaseBatchCommandFromResourceAssembler;
-import com.closedsource.qualitrack.platform.batch.interfaces.rest.transform.RejectBatchCommandFromResourceAssembler;
+import com.closedsource.qualitrack.platform.batch.interfaces.rest.transform.UpdateBatchStatusCommandFromResourceAssembler;
 import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
 import com.closedsource.qualitrack.platform.shared.application.result.Result;
+import com.closedsource.qualitrack.platform.shared.interfaces.rest.transform.ErrorResponseAssembler;
 import com.closedsource.qualitrack.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +29,7 @@ import java.util.List;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
- * REST controller that exposes production batch resources and lifecycle endpoints.
+ * REST controller that exposes production batch resources.
  */
 @RestController
 @RequestMapping(value = "/api/v1/batches", produces = APPLICATION_JSON_VALUE)
@@ -49,14 +44,8 @@ public class BatchController {
         this.batchQueryService = batchQueryService;
     }
 
-    @PostMapping
-    @Operation(summary = "Create production batch", description = "Creates a new production batch for a laboratory product.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Batch created successfully", content = @Content(schema = @Schema(implementation = BatchResource.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid input data"),
-            @ApiResponse(responseCode = "404", description = "Laboratory or product not found"),
-            @ApiResponse(responseCode = "409", description = "Batch number already exists")
-    })
+    @PostMapping(consumes = APPLICATION_JSON_VALUE)
+    @Operation(summary = "Create production batch")
     public ResponseEntity<?> createBatch(@RequestBody CreateBatchResource resource) {
         var command = CreateBatchCommandFromResourceAssembler.toCommandFromResource(resource);
 
@@ -73,11 +62,7 @@ public class BatchController {
     }
 
     @GetMapping("/{batchId}")
-    @Operation(summary = "Get batch by ID", description = "Retrieves a specific production batch by its numeric identifier.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Batch found", content = @Content(schema = @Schema(implementation = BatchResource.class))),
-            @ApiResponse(responseCode = "404", description = "Batch not found")
-    })
+    @Operation(summary = "Get batch by ID")
     public ResponseEntity<BatchResource> getBatchById(
             @PathVariable
             @Parameter(description = "Batch numeric identifier", example = "1", required = true)
@@ -91,11 +76,7 @@ public class BatchController {
     }
 
     @GetMapping(params = "labId")
-    @Operation(summary = "Get batches by laboratory", description = "Retrieves production batches by laboratory ID.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Batches retrieved successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid laboratory ID")
-    })
+    @Operation(summary = "Get batches by laboratory")
     public ResponseEntity<List<BatchResource>> getBatchesByLabId(
             @RequestParam
             @Parameter(description = "Laboratory numeric identifier", example = "1", required = true)
@@ -111,11 +92,7 @@ public class BatchController {
     }
 
     @GetMapping(params = "status")
-    @Operation(summary = "Get batches by status", description = "Retrieves production batches by lifecycle status.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Batches retrieved successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid batch status")
-    })
+    @Operation(summary = "Get batches by status")
     public ResponseEntity<List<BatchResource>> getBatchesByStatus(
             @RequestParam
             @Parameter(description = "Batch lifecycle status", example = "PENDING", required = true)
@@ -130,55 +107,47 @@ public class BatchController {
         return ResponseEntity.ok(resources);
     }
 
-    @PatchMapping("/{batchId}/release")
-    @Operation(summary = "Release batch", description = "Releases a production batch after quality control validation.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Batch released successfully", content = @Content(schema = @Schema(implementation = BatchResource.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid release data"),
-            @ApiResponse(responseCode = "404", description = "Batch not found")
-    })
-    public ResponseEntity<?> releaseBatch(
+    @PatchMapping(value = "/{batchId}", consumes = APPLICATION_JSON_VALUE)
+    @Operation(summary = "Update batch status")
+    public ResponseEntity<?> updateBatchStatus(
             @PathVariable
             @Parameter(description = "Batch numeric identifier", example = "1", required = true)
             Long batchId,
-            @RequestBody ReleaseBatchResource resource
+            @RequestBody UpdateBatchStatusResource resource
     ) {
-        var command = ReleaseBatchCommandFromResourceAssembler.toCommandFromResource(batchId, resource);
+        if (resource.status() == null) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.validationError("Batch", "status is required")
+            );
+        }
 
-        var result = batchCommandService.handle(command)
-                .flatMap(updatedBatchId -> batchQueryService.handle(new GetBatchByIdQuery(updatedBatchId))
-                        .<Result<Batch, ApplicationError>>map(Result::success)
-                        .orElseGet(() -> Result.failure(ApplicationError.notFound("Batch", updatedBatchId))));
+        var result = switch (resource.status()) {
+            case RELEASED -> batchCommandService.handle(
+                    UpdateBatchStatusCommandFromResourceAssembler.toReleaseCommandFromResource(batchId, resource)
+            );
+
+            case REJECTED -> batchCommandService.handle(
+                    UpdateBatchStatusCommandFromResourceAssembler.toRejectCommandFromResource(batchId, resource)
+            );
+
+            default -> null;
+        };
+
+        if (result == null) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.validationError(
+                            "Batch",
+                            "Only status RELEASED or REJECTED is supported for batch status updates"
+                    )
+            );
+        }
+
+        var responseResult = result.flatMap(updatedBatchId -> batchQueryService.handle(new GetBatchByIdQuery(updatedBatchId))
+                .<Result<Batch, ApplicationError>>map(Result::success)
+                .orElseGet(() -> Result.failure(ApplicationError.notFound("Batch", updatedBatchId))));
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
-                BatchResourceFromEntityAssembler::toResourceFromEntity,
-                HttpStatus.OK
-        );
-    }
-
-    @PatchMapping("/{batchId}/reject")
-    @Operation(summary = "Reject batch", description = "Rejects a production batch due to quality control or compliance failures.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Batch rejected successfully", content = @Content(schema = @Schema(implementation = BatchResource.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid rejection data"),
-            @ApiResponse(responseCode = "404", description = "Batch not found")
-    })
-    public ResponseEntity<?> rejectBatch(
-            @PathVariable
-            @Parameter(description = "Batch numeric identifier", example = "1", required = true)
-            Long batchId,
-            @RequestBody RejectBatchResource resource
-    ) {
-        var command = RejectBatchCommandFromResourceAssembler.toCommandFromResource(batchId, resource);
-
-        var result = batchCommandService.handle(command)
-                .flatMap(updatedBatchId -> batchQueryService.handle(new GetBatchByIdQuery(updatedBatchId))
-                        .<Result<Batch, ApplicationError>>map(Result::success)
-                        .orElseGet(() -> Result.failure(ApplicationError.notFound("Batch", updatedBatchId))));
-
-        return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
+                responseResult,
                 BatchResourceFromEntityAssembler::toResourceFromEntity,
                 HttpStatus.OK
         );
