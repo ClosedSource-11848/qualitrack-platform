@@ -6,11 +6,17 @@ import com.closedsource.qualitrack.platform.ca.interfaces.rest.resources.CreateD
 /**
  * Assembler to convert CreateDeviationAlertResource into CreateDeviationAlertCommand.
  */
-public class CreateDeviationAlertCommandFromResourceAssembler {
+public final class CreateDeviationAlertCommandFromResourceAssembler {
 
-    public static CreateDeviationAlertCommand toCommandFromResource(CreateDeviationAlertResource resource) {
+    private CreateDeviationAlertCommandFromResourceAssembler() {
+    }
+
+    public static CreateDeviationAlertCommand toCommandFromResource(
+            Long equipmentId,
+            CreateDeviationAlertResource resource
+    ) {
         return new CreateDeviationAlertCommand(
-                resource.equipmentId(),
+                equipmentId,
                 resource.batchId(),
                 resource.parameterName(),
                 resource.recordedValue(),

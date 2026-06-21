@@ -6,12 +6,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(
         name = "CreateDeviationAlertRequest",
         description = "Request payload for creating a deviation alert",
-        example = "{\"equipmentId\": 1, \"batchId\": 2, \"parameterName\": \"TEMPERATURE\", \"recordedValue\": 9.5, \"thresholdValue\": 8.0, \"unit\": \"Celsius\", \"timestamp\": \"2026-05-12T11:00:00Z\", \"severity\": \"CRITICAL\"}"
+        example = "{\"batchId\": 2, \"parameterName\": \"TEMPERATURE\", \"recordedValue\": 9.5, \"thresholdValue\": 8.0, \"unit\": \"Celsius\", \"timestamp\": \"2026-05-12T11:00:00Z\", \"severity\": \"CRITICAL\"}"
 )
 public record CreateDeviationAlertResource(
-        @Schema(description = "Equipment numeric identifier", example = "1")
-        Long equipmentId,
-
         @Schema(description = "Batch numeric identifier, if applicable", example = "2")
         Long batchId,
 
@@ -34,9 +31,6 @@ public record CreateDeviationAlertResource(
         AlertSeverity severity
 ) {
     public CreateDeviationAlertResource {
-        if (equipmentId == null || equipmentId <= 0) {
-            throw new IllegalArgumentException("equipmentId cannot be null or less than 1");
-        }
         if (batchId != null && batchId <= 0) {
             throw new IllegalArgumentException("batchId cannot be less than 1");
         }
