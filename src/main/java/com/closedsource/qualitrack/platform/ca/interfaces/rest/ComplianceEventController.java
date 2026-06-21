@@ -4,7 +4,7 @@ import com.closedsource.qualitrack.platform.ca.application.queryservices.CaQuery
 import com.closedsource.qualitrack.platform.ca.domain.model.queries.GetComplianceEventsByRelatedEntityIdQuery;
 import com.closedsource.qualitrack.platform.ca.interfaces.rest.resources.ComplianceEventResource;
 import com.closedsource.qualitrack.platform.ca.interfaces.rest.transform.ComplianceEventResourceFromEntityAssembler;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,8 +16,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
  * REST controller that exposes compliance audit event resources.
  */
 @RestController
-@RequestMapping(value = "/api/v1/compliance-events", produces = APPLICATION_JSON_VALUE)
-@Tag(name = "Compliance Events", description = "Compliance audit event endpoints")
+@RequestMapping(value = "/api/v1", produces = APPLICATION_JSON_VALUE)
 public class ComplianceEventController {
 
     private final CaQueryService caQueryService;
@@ -26,18 +25,35 @@ public class ComplianceEventController {
         this.caQueryService = caQueryService;
     }
 
-    @GetMapping
-    public ResponseEntity<List<ComplianceEventResource>> getComplianceEvents(
-            @RequestParam Long relatedEntityId
+    @GetMapping(value = "/equipments/{equipmentId}/compliance-events")
+    @Operation(
+            summary = "Get equipment compliance events",
+            tags = {"Equipment"}
+    )
+    public ResponseEntity<List<ComplianceEventResource>> getEquipmentComplianceEvents(
+            @PathVariable Long equipmentId
     ) {
+        return ResponseEntity.ok(getComplianceEventResources(equipmentId));
+    }
+
+    @GetMapping(value = "/batches/{batchId}/compliance-events")
+    @Operation(
+            summary = "Get batch compliance events",
+            tags = {"Batches"}
+    )
+    public ResponseEntity<List<ComplianceEventResource>> getBatchComplianceEvents(
+            @PathVariable Long batchId
+    ) {
+        return ResponseEntity.ok(getComplianceEventResources(batchId));
+    }
+
+    private List<ComplianceEventResource> getComplianceEventResources(Long relatedEntityId) {
         var events = caQueryService.handle(
                 new GetComplianceEventsByRelatedEntityIdQuery(relatedEntityId)
         );
 
-        var resources = events.stream()
+        return events.stream()
                 .map(ComplianceEventResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
-
-        return ResponseEntity.ok(resources);
     }
 }
