@@ -43,15 +43,15 @@ public class DeviationTrendController {
     }
 
     /**
-     * Calculates and stores a deviation trend for an equipment parameter.
+     * Creates and stores a deviation trend for an equipment parameter.
      *
      * @param equipmentId equipment numeric identifier
-     * @param resource deviation trend calculation request resource
-     * @return the calculated deviation trend resource
+     * @param resource deviation trend creation request resource
+     * @return the created deviation trend resource
      */
-    @PostMapping(value = "/calculate", consumes = APPLICATION_JSON_VALUE)
-    @Operation(summary = "Calculate equipment deviation trend")
-    public ResponseEntity<?> calculateDeviationTrend(
+    @PostMapping(consumes = APPLICATION_JSON_VALUE)
+    @Operation(summary = "Create equipment deviation trend")
+    public ResponseEntity<?> createDeviationTrend(
             @PathVariable Long equipmentId,
             @RequestBody CalculateDeviationTrendResource resource
     ) {
