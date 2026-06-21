@@ -56,12 +56,6 @@ public class RaCommandServiceImpl implements RaCommandService {
         this.deviationTrendRepository = deviationTrendRepository;
     }
 
-    /**
-     * Handles KPI dashboard calculation.
-     *
-     * @param command The command containing the laboratory identifier.
-     * @return Calculated KPI dashboard or an application error.
-     */
     @Override
     public Result<KpiDashboard, ApplicationError> handle(CalculateKpiDashboardCommand command) {
         try {
@@ -82,8 +76,7 @@ public class RaCommandServiceImpl implements RaCommandService {
                     "KPI_DASHBOARD",
                     savedDashboard.getId(),
                     command.laboratoryId(),
-                    "KPI dashboard calculated for laboratory ID %d"
-                            .formatted(command.laboratoryId())
+                    "KPI dashboard calculated for laboratory ID %d".formatted(command.laboratoryId())
             ));
 
             return Result.success(savedDashboard);
@@ -95,12 +88,6 @@ public class RaCommandServiceImpl implements RaCommandService {
         }
     }
 
-    /**
-     * Handles deviation trend calculation.
-     *
-     * @param command The command containing the equipment and parameter identifiers.
-     * @return Calculated deviation trend or an application error.
-     */
     @Override
     public Result<DeviationTrend, ApplicationError> handle(CalculateDeviationTrendCommand command) {
         try {
@@ -140,17 +127,15 @@ public class RaCommandServiceImpl implements RaCommandService {
         }
     }
 
-    /**
-     * Handles production batch report generation.
-     *
-     * @param command The command containing batch report generation parameters.
-     * @return Generated report bytes or an application error.
-     */
     @Override
     public Result<byte[], ApplicationError> handle(GenerateBatchReportCommand command) {
         try {
             var content = buildBatchReportContent(command);
-            var bytes = content.getBytes(StandardCharsets.UTF_8);
+            var bytes = buildReportBytes(
+                    command.format(),
+                    "QualiTrack - Batch Traceability Report",
+                    content
+            );
 
             auditLogRepository.save(new AuditLogEntry(
                     AuditAction.GENERATE,
@@ -170,17 +155,15 @@ public class RaCommandServiceImpl implements RaCommandService {
         }
     }
 
-    /**
-     * Handles compliance report generation.
-     *
-     * @param command The command containing compliance report generation parameters.
-     * @return Generated report bytes or an application error.
-     */
     @Override
     public Result<byte[], ApplicationError> handle(GenerateComplianceReportCommand command) {
         try {
             var content = buildComplianceReportContent(command);
-            var bytes = content.getBytes(StandardCharsets.UTF_8);
+            var bytes = buildReportBytes(
+                    command.format(),
+                    "QualiTrack - Compliance Report",
+                    content
+            );
 
             var report = new AuditReport(
                     command.laboratoryId(),
@@ -215,17 +198,15 @@ public class RaCommandServiceImpl implements RaCommandService {
         }
     }
 
-    /**
-     * Handles equipment log export.
-     *
-     * @param command The command containing equipment log export parameters.
-     * @return Exported log bytes or an application error.
-     */
     @Override
     public Result<byte[], ApplicationError> handle(ExportEquipmentLogCommand command) {
         try {
             var content = buildEquipmentLogContent(command);
-            var bytes = content.getBytes(StandardCharsets.UTF_8);
+            var bytes = buildReportBytes(
+                    command.format(),
+                    "QualiTrack - Equipment Log Export",
+                    content
+            );
 
             auditLogRepository.save(new AuditLogEntry(
                     AuditAction.EXPORT,
@@ -265,8 +246,6 @@ public class RaCommandServiceImpl implements RaCommandService {
         }
 
         return """
-                QualiTrack - Batch Traceability Report
-
                 Batch ID: %d
                 Include Telemetry: %s
                 Include Deviations: %s
@@ -303,8 +282,6 @@ public class RaCommandServiceImpl implements RaCommandService {
         }
 
         return """
-                QualiTrack - Compliance Report
-
                 Laboratory ID: %d
                 Period Start: %s
                 Period End: %s
@@ -341,8 +318,6 @@ public class RaCommandServiceImpl implements RaCommandService {
         }
 
         return """
-                QualiTrack - Equipment Log Export
-
                 Equipment ID: %d
                 Period Start: %s
                 Period End: %s
@@ -357,6 +332,85 @@ public class RaCommandServiceImpl implements RaCommandService {
                 command.requestedBy(),
                 Instant.now()
         );
+    }
+
+    private byte[] buildReportBytes(ReportFormat format, String title, String content) {
+        if (format == ReportFormat.CSV) {
+            return content.getBytes(StandardCharsets.UTF_8);
+        }
+
+        return buildSimplePdf(title, content);
+    }
+
+    private byte[] buildSimplePdf(String title, String content) {
+        var stream = new StringBuilder();
+
+        stream.append("BT\n");
+        stream.append("/F1 18 Tf\n");
+        stream.append("72 750 Td\n");
+        stream.append("(").append(escapePdfText(title)).append(") Tj\n");
+        stream.append("/F1 11 Tf\n");
+        stream.append("0 -30 Td\n");
+
+        content.lines()
+                .filter(line -> !line.isBlank())
+                .limit(32)
+                .forEach(line -> {
+                    var safeLine = line.length() > 95 ? line.substring(0, 92) + "..." : line;
+                    stream.append("(").append(escapePdfText(safeLine)).append(") Tj\n");
+                    stream.append("0 -16 Td\n");
+                });
+
+        stream.append("ET\n");
+
+        var streamText = stream.toString();
+        var streamLength = streamText.getBytes(StandardCharsets.UTF_8).length;
+
+        var objects = new String[] {
+                "<< /Type /Catalog /Pages 2 0 R >>",
+                "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+                "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+                "<< /Length %d >>\nstream\n%sendstream".formatted(streamLength, streamText)
+        };
+
+        var pdf = new StringBuilder("%PDF-1.4\n");
+        var offsets = new int[objects.length + 1];
+
+        for (int index = 0; index < objects.length; index++) {
+            offsets[index + 1] = pdf.toString().getBytes(StandardCharsets.UTF_8).length;
+            pdf.append(index + 1).append(" 0 obj\n");
+            pdf.append(objects[index]).append("\n");
+            pdf.append("endobj\n");
+        }
+
+        var xrefOffset = pdf.toString().getBytes(StandardCharsets.UTF_8).length;
+
+        pdf.append("xref\n");
+        pdf.append("0 ").append(objects.length + 1).append("\n");
+        pdf.append("0000000000 65535 f \n");
+
+        for (int index = 1; index < offsets.length; index++) {
+            pdf.append("%010d 00000 n \n".formatted(offsets[index]));
+        }
+
+        pdf.append("trailer\n");
+        pdf.append("<< /Size ").append(objects.length + 1).append(" /Root 1 0 R >>\n");
+        pdf.append("startxref\n");
+        pdf.append(xrefOffset).append("\n");
+        pdf.append("%%EOF");
+
+        return pdf.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private String escapePdfText(String value) {
+        if (value == null) return "";
+
+        return value
+                .replace("\\", "\\\\")
+                .replace("(", "\\(")
+                .replace(")", "\\)")
+                .replaceAll("[^\\x20-\\x7E]", "?");
     }
 
     private String buildGeneratedFilePath(String prefix, ReportFormat format) {
