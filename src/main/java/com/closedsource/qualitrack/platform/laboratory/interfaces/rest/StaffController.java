@@ -1,15 +1,14 @@
 package com.closedsource.qualitrack.platform.laboratory.interfaces.rest;
 
 import com.closedsource.qualitrack.platform.laboratory.application.commandservices.StaffCommandService;
-import com.closedsource.qualitrack.platform.laboratory.domain.model.commands.DeactivateStaffCommand;
+import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.resources.UpdateStaffStatusResource;
+import com.closedsource.qualitrack.platform.laboratory.interfaces.rest.transform.UpdateStaffStatusCommandFromResourceAssembler;
+import com.closedsource.qualitrack.platform.shared.application.result.ApplicationError;
 import com.closedsource.qualitrack.platform.shared.interfaces.rest.resources.MessageResource;
+import com.closedsource.qualitrack.platform.shared.interfaces.rest.transform.ErrorResponseAssembler;
 import com.closedsource.qualitrack.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,11 +17,11 @@ import org.springframework.web.bind.annotation.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
- * REST controller that exposes direct operations on staff members.
+ * REST controller that exposes direct operations on staff member resources.
  */
 @RestController
 @RequestMapping(value = "/api/v1/staff", produces = APPLICATION_JSON_VALUE)
-@Tag(name = "Staff", description = "Staff management endpoints") // ¡Etiqueta actualizada e independiente!
+@Tag(name = "Staff", description = "Staff management endpoints")
 public class StaffController {
 
     private final StaffCommandService staffCommandService;
@@ -31,24 +30,52 @@ public class StaffController {
         this.staffCommandService = staffCommandService;
     }
 
-    @PutMapping("/{staffId}/deactivation")
-    @Operation(summary = "Deactivate staff member", description = "Deactivates an employee's access across the platform.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Staff deactivated successfully",
-                    content = @Content(schema = @Schema(implementation = MessageResource.class))),
-            @ApiResponse(responseCode = "404", description = "Staff not found",
-                    content = @Content(mediaType = "application/json")),
-            @ApiResponse(responseCode = "409", description = "Business rule violation",
-                    content = @Content(mediaType = "application/json"))
-    })
-    public ResponseEntity<?> deactivateStaff(
-            @PathVariable @Parameter(description = "Staff numeric identifier", example = "99", required = true) Long staffId
+    /**
+     * Updates a staff member status.
+     *
+     * @param staffId staff numeric identifier
+     * @param resource staff status update resource
+     * @return confirmation message when the status is updated
+     */
+    @PatchMapping(value = "/{staffId}", consumes = APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "Update staff member status",
+            description = "Updates a staff member status. Currently supports deactivation by sending active=false."
+    )
+    public ResponseEntity<?> updateStaffStatus(
+            @PathVariable
+            @Parameter(description = "Staff numeric identifier", example = "99", required = true)
+            Long staffId,
+            @RequestBody UpdateStaffStatusResource resource
     ) {
-        var command = new DeactivateStaffCommand(staffId);
+        if (resource.active() == null) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.validationError(
+                            "StaffMember",
+                            "active status is required"
+                    )
+            );
+        }
+
+        if (Boolean.TRUE.equals(resource.active())) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.validationError(
+                            "StaffMember",
+                            "Activating staff members is not supported yet"
+                    )
+            );
+        }
+
+        var command = UpdateStaffStatusCommandFromResourceAssembler
+                .toDeactivateCommandFromResource(staffId, resource);
 
         var result = staffCommandService.handle(command)
                 .map(id -> new MessageResource("Staff member deactivated successfully"));
 
-        return ResponseEntityAssembler.toResponseEntityFromResult(result, message -> message, HttpStatus.OK);
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                message -> message,
+                HttpStatus.OK
+        );
     }
 }
