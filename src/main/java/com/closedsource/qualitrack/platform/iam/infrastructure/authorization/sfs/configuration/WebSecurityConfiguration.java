@@ -101,7 +101,8 @@ public class WebSecurityConfiguration {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/api/v1/authentication/**",
-                                "/api/v1/subscriptions/stripe/webhook"
+                                "/api/v1/subscriptions/stripe/webhook",
+                                "/api/v1/stripe/webhooks"
                         ).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
